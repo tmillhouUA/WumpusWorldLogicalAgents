@@ -1,0 +1,10 @@
+# Dev-only test harness — not part of the shipped project.
+test.js
+
+# Style inspiration, not part of the project.
+styleref.html
+mockup.html
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

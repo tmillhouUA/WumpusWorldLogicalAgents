@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wumpus World — Logical Agents</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!--
+    Five panels, per the planned layout:
+      - #kb-panel      : left-upper, the agent's knowledge base
+      - #ask-panel     : left-lower, the manual query ("ASK") tool
+      - #game-panel    : center, the game world (focal point)
+      - #solver-panel  : right-upper, the resolution solver
+      - #control-panel : right-lower, controls + explanation (mode-dependent)
+    Exact sizing/placement is provisional; we'll refine it later.
+  -->
+  <div id="app">
+    <section id="kb-panel"      class="panel"><h2>Knowledge Base</h2></section>
+    <section id="ask-panel"     class="panel"><h2>Ask</h2></section>
+    <section id="game-panel"    class="panel"><h2>Wumpus World</h2></section>
+    <section id="solver-panel"  class="panel"><h2>Resolution Solver</h2></section>
+    <section id="control-panel" class="panel"><h2>Controls</h2></section>
+  </div>
+
+  <!-- Classic scripts, loaded in dependency order. logic.js defines WW; -->
+  <!-- ui.js consumes it.                                                 -->
+  <script src="logic.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+/* Wumpus World — Logical Agents
+   Provisional layout only. The planned proportions are:
+     game   = n x n        (center)
+     kb     = n/2 x n       (left)
+     solver = n/2 x 2n/3    (right, upper)
+     control= n/2 x n/3     (right, lower)
+   For now we use a simple CSS grid so the four panels are visible and
+   easy to rearrange once we tune sizes. */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f4f4f4;
+}
+
+#app {
+  display: grid;
+  /* left = n/2, center = n, right = n/2  ->  columns 1fr 2fr 1fr */
+  grid-template-columns: 1fr 2fr 1fr;
+  /* Twelve equal rows let the two side columns have DIFFERENT bottom-panel
+     heights (a plain 2fr/1fr split forces them to share two tracks), at a fine
+     enough granularity to size Controls to just the pads + one control bar.
+     Right column: Solver spans 19, Ask spans 5  (Ask is half its old 8/24 band).
+     Left column:  KB spans 15, Controls spans 9 (pads + a smidge + the mode bar).
+     Game spans all 24. Using 24 rows (vs 12) lets Controls grow by a single fine
+     row — a small nudge taller — without the coarse jump a 12-row step would make. */
+  grid-template-rows: repeat(24, 1fr);
+  gap: 8px;
+  padding: 8px;
+  height: 100vh;
+}
+
+/* Ask and Controls are SWAPPED vs. before: Ask now sits bottom-RIGHT (short),
+   Controls bottom-LEFT. */
+#kb-panel      { grid-column: 1; grid-row: 1 / span 15; }
+#control-panel { grid-column: 1; grid-row: 16 / span 9; }
+#game-panel    { grid-column: 2; grid-row: 1 / span 24; }
+#solver-panel  { grid-column: 3; grid-row: 1 / span 20; }
+#ask-panel     { grid-column: 3; grid-row: 21 / span 4; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  overflow: auto;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---- basic ground-truth grid view ---- */
+
+.toolbar {
+  margin-bottom: 8px;
+}
+
+/* The game panel stacks its heading, the toolbar, then the board; the board is
+   a square that fits the leftover space, and any space beneath it is headroom
+   for future bottom-of-board controls. */
+#game-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Square board that fits BOTH axes. Height is the primary driver (height:100%,
+   bounded by the flex column to the panel interior) with aspect-ratio:1 deriving
+   the width — so it can never overflow vertically. max-width:80% then caps the
+   width; when that cap binds, the height shrinks to stay square, so it still fits.
+   The board itself being square means its equal 1fr rows/columns are square cells
+   — so the cells need NO aspect-ratio of their own (relying on it fought the 1fr
+   rows and stretched the horizontal gap lines). align-self:center centers the
+   board horizontally (the cross axis of this column) while the default main-axis
+   flex-start keeps it pinned to the top — headroom pools below.
+   Grid lines are a SINGLE source: the #333 board background showing through the
+   gap (outer padding = the edge). Cells carry no border, so every line — interior
+   and edge — is the same color and width. */
+.grid {
+  display: grid;
+  gap: 1px;
+  background: #333;
+  padding: 1px;
+  width: 80%;
+  aspect-ratio: 1;
+  max-height: 100%;
+  min-height: 0;
+  align-self: center;
+}
+
+.grid-cell {
+  background: #fafafa;
+  padding: 4px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.grid-cell .coord {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
+  color: #aaa;
+}
+
+.attr {
+  text-transform: capitalize;
+}
+
+.attr.dim {
+  opacity: 0.25;     /* uninferred / unobserved */
+}
+
+.attr.player {
+  font-weight: 700;
+  color: #b00;
+}
+
+.attr.neg {
+  color: #2a8a4a;     /* proven-absent: a calm green */
+  font-style: italic;
+}
+
+.toolbar .status {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* ---- knowledge base panel ---- */
+
+.kb-section {
+  border: 1px solid #e2e2e2;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.kb-section summary {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+  user-select: none;
+}
+
+.kb-section summary:hover {
+  background: #f6f6f6;
+}
+
+.kb-count {
+  color: #999;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.kb-list {
+  padding: 4px 8px 8px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kb-formula {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  color: #222;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.kb-empty {
+  font-size: 11px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* ---- resolution solver panel ---- */
+
+/* Title fixed; the ask list scrolls. */
+#solver-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.solver-scroll {
+  flex: 1;
+  overflow: auto;
+}
+.solver-empty {
+  font-size: 11px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* "resolving…" indicator: sits below the latest streamed ask while the worker
+   is still running, fading slowly in and out, then disappears when done. */
+.resolving {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  padding: 4px 2px;
+  animation: resolving-pulse 1.4s ease-in-out infinite;
+}
+@keyframes resolving-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+/* Level 1: an ask. */
+.ask-entry {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+/* User-posed asks (vs. the agent's own) get a soft tint so they stand out in
+   the shared log. The inference itself is identical; only the origin differs. */
+.ask-entry.user-posed {
+  background: #fbf6ec;         /* faint warm cream */
+  border-color: #ecdcbf;
+}
+.ask-entry > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  user-select: none;
+  list-style: none;
+}
+.ask-entry > summary::-webkit-details-marker { display: none; }
+.ask-entry > summary::before { content: '▸'; font-size: 9px; color: #999; }
+.ask-entry[open] > summary::before { content: '▾'; }
+.ask-entry > summary:hover { background: #f6f6f6; }
+.ask-query {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+.ask-result {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 11px;
+  color: #999;
+  white-space: nowrap;
+}
+.ask-result.yes { color: #2a8a4a; }
+
+/* Level 2: a step. */
+.res-step {
+  border-top: 1px solid #eee;
+  margin: 0 6px;
+}
+.res-step > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  cursor: pointer;
+  padding: 3px 4px;
+  font-size: 11px;
+  color: #555;
+  user-select: none;
+  list-style: none;
+}
+.res-step > summary::-webkit-details-marker { display: none; }
+.res-step > summary::before { content: '▸'; font-size: 8px; color: #bbb; }
+.res-step[open] > summary::before { content: '▾'; }
+.res-step > summary:hover { background: #fafafa; }
+.step-count { margin-left: auto; }
+
+/* The two phases get matching left-accent cues in contrasting hues, so the
+   pipeline-before-resolution and the resolution proper read as distinct phases:
+     - preprocessing (Input / Pure Symbol / Unit Subsumption): cool blue
+     - resolution steps: a warmer green (echoes the panel's "entailed/yes" green) */
+.prep-step > summary {
+  color: #3a6ea5;
+  border-left: 2px solid #cdd9e8;
+}
+.res-step:not(.prep-step) > summary {
+  color: #2a8a4a;
+  border-left: 2px solid #c3e0cd;
+}
+
+/* Level 3: the resolvent proof lines. */
+.res-list {
+  padding: 3px 4px 6px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.res-line {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.res-input.empty {
+  font-weight: 700;
+  color: #c00;
+}
+
+/* ---- controls ---- */
+
+/* The control panel stacks its heading over the controls; make it a flex column
+   so .controls fills the space left AFTER the <h2> instead of the full panel
+   height (which, added to the heading, overflowed and triggered the scrollbar). */
+#control-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The stack fills the panel below the heading: pads row on top (flexes to take
+   the space), the mode/run-step bar beneath at its natural height. */
+.controls-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.controls {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;   /* don't stretch children to row height; a stretched
+                                 .move-pad would override its aspect-ratio height
+                                 and come out rectangular */
+  gap: 12px;
+  padding: 5px 0;            /* breathing room above and below the pad block */
+}
+
+/* Mode toggle + Run/Step bar, beneath the pads. Two groups side by side, with a
+   little vertical breathing room above and below the buttons. */
+.mode-bar {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 5px 0;
+}
+.mode-toggle,
+.run-step {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+.mode-bar button {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* The selected mode is highlighted (matches the ask-panel active accent). */
+.mode-btn.active {
+  background: #3a6ea5;
+  color: #fff;
+  border-color: #345f8c;
+}
+
+/* Left half: movement pad. A square 3x3 grid: aspect-ratio:1 keeps the whole
+   pad square, so its three equal rows/columns (1fr) are each square too and the
+   buttons come out square with equal N–S and W–E spacing. It scales with the
+   panel height; width is capped to the height so it can't stretch out of square. */
+.move-pad {
+  width: 50%;
+  max-height: 100%;
+  aspect-ratio: 1;
+  align-self: center;   /* vertically center the pad without stretching it
+                           (align-items:center on the row would kill aspect-ratio) */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+}
+.move-pad button {
+  font-size: 15px;
+  font-weight: 600;
+}
+/* Label in the pad's empty center cell. */
+.pad-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+/* Right half: small shooting pad on top, actions beneath. */
+.right-col {
+  flex: 1;
+  align-self: stretch;      /* span the full row height so there's room to center */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  /* center the shoot pad + grab/climb as a unit,
+                               preserving their gap */
+  gap: 13px;   /* vertical space between the shoot pad and the grab/climb row */
+}
+/* Small square shooting pad. Fixed width + aspect-ratio:1 keeps it square (same
+   trick as .move-pad); align-self stops the column from stretching it full-width
+   and out of square. */
+.shoot-pad {
+  width: 75%;
+  max-width: 175px;
+  aspect-ratio: 1;
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+}
+.shoot-pad button {
+  font-size: 10px;
+  padding: 2px 0;
+  color: #a40;
+}
+/* Two equal-width slots (each a .action-slot at flex:1) hold the buttons; the
+   button fills 75% of its slot, centered by auto side-margins. Narrowing lives
+   on the button, equal placement on the slot, so the center never moves and the
+   text isn't condensed. */
+.action-btns {
+  display: flex;
+  gap: 0px;
+}
+.action-slot {
+  flex: 1;
+  display: flex;
+}
+.action-slot button {
+  width: 75%;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+
+/* While the worker is inferring, dim the controls and swallow clicks so a
+   second action can't race ahead of the in-flight inference. */
+#control-panel.busy .controls {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: wait;
+}
+
+/* In automatic mode the agent drives, so the manual pad is grayed and inert. */
+.controls.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ---- ask panel (manual query) ---- */
+
+/* The query display sits left, Clear/Submit to its right. */
+.ask-header {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* Read-only query display, in logical notation, at double the panel-title size
+   (title is 14px -> 28px). Looks like a text field but isn't editable. */
+.ask-field {
+  flex: 1;
+  min-width: 0;
+  height: 42px;              /* fixed at the tall size, so it doesn't grow with text */
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fafafa;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 22px;
+  color: #222;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Query still being built (not yet submittable): red text as a cue. */
+.ask-field.incomplete {
+  color: #c0392b;
+}
+
+.ask-btns {
+  display: flex;
+  gap: 6px;
+}
+.ask-btns button {
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+/* Grayed / inert Submit until the proposition is complete. */
+.ask-btns button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Atom row: the four predicate buttons + the ¬ toggle. */
+.ask-atoms {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ask-atom {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* The currently-chosen atom / active negation get a highlighted state. */
+.ask-atom.active {
+  background: #3a6ea5;
+  color: #fff;
+  border-color: #345f8c;
+}
+/* ¬ toggle: narrower than the atom buttons, monospace to match the field glyph. */
+.ask-neg {
+  flex: 0 0 auto;
+  min-width: 34px;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 15px;
+}

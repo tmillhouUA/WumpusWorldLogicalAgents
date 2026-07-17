@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 09: action pose — arms thrown up and out, wide-open roaring maw full of
+       fangs (top and bottom), eyes narrowed. The "you woke me" token. -->
+  <title>Wumpus 09 — arms-up roar</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>
+  <ellipse cx="38" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+  <ellipse cx="62" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+
+  <!-- arms up-and-out, clawed -->
+  <path d="M24 47 Q13 37 8 34 Q11 42 22 51 Z" fill="#5a6b3a"/>
+  <path d="M76 47 Q87 37 92 34 Q89 42 78 51 Z" fill="#5a6b3a"/>
+  <path d="M8 34 l-3 -2 M10 32 l-2 -3 M13 32 l-1 -3" stroke="#3f4a29" stroke-width="1"/>
+  <path d="M92 34 l3 -2 M90 32 l2 -3 M87 32 l1 -3" stroke="#3f4a29" stroke-width="1"/>
+
+  <path d="M22 78 Q18 20 50 18 Q82 20 78 78 Z" fill="#556635"/>
+  <path d="M28 76 Q26 30 50 28 Q74 30 72 76 Z" fill="#61733a"/>
+
+  <path d="M32 39 L45 43" fill="none" stroke="#2a331a" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M68 39 L55 43" fill="none" stroke="#2a331a" stroke-width="2.8" stroke-linecap="round"/>
+
+  <!-- narrowed eyes -->
+  <ellipse cx="40" cy="49" rx="6.5" ry="5.5" fill="#f4ecd0"/>
+  <ellipse cx="60" cy="49" rx="6.5" ry="5.5" fill="#f4ecd0"/>
+  <circle cx="40" cy="49" r="3.2" fill="#c9a84c"/>
+  <circle cx="60" cy="49" r="3.2" fill="#c9a84c"/>
+  <circle cx="40" cy="49" r="1.5" fill="#1a1408"/>
+  <circle cx="60" cy="49" r="1.5" fill="#1a1408"/>
+
+  <!-- wide-open roaring maw -->
+  <ellipse cx="50" cy="65" rx="12" ry="8" fill="#2a1010"/>
+  <!-- top fangs -->
+  <polygon points="42,58 46,58 44,64" fill="#f4ecd0"/>
+  <polygon points="54,58 58,58 56,64" fill="#f4ecd0"/>
+  <!-- bottom fangs -->
+  <polygon points="44,72 48,72 46,66" fill="#f4ecd0"/>
+  <polygon points="52,72 56,72 54,66" fill="#f4ecd0"/>
+</svg>

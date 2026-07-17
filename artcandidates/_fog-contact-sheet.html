@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Fog cloud — contact sheet</title>
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0f; color: #b8a878; font-family: 'Cinzel', Georgia, serif; }
+  h1 { color: #c9a84c; font-size: 20px; letter-spacing: 2px; text-align: center; }
+  p.note { text-align: center; font-size: 12px; color: #7a5c1e; max-width: 680px; margin: 0 auto 16px; }
+  .btn { display: block; margin: 0 auto 24px; background: #14110c; color: #c9a84c; border: 1px solid #5a3e10;
+         font-family: 'Cinzel', Georgia, serif; letter-spacing: 1px; padding: 6px 16px; cursor: pointer; }
+  .btn:hover { border-color: #c9a84c; }
+  .row { display: flex; justify-content: center; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
+  .card { text-align: center; }
+  .lbl { font-size: 10px; color: #5a4a2a; margin-top: 8px; }
+
+  /* one big fog for shape inspection */
+  .big { width: 200px; height: 200px; background: #14110c; border: 1px solid #2a1f0a; overflow: hidden; position: relative; }
+
+  /* a ROOM is a 2x2 of quadrants on flagstone. Each quadrant hosts one fog cloud
+     that is sized OVER the quadrant and centered on it, so cores cover the
+     quadrants and the transparent spill overhangs into neighbors and overlaps. */
+  .room { position: relative; background: #2b2620; border: 1px solid #0d0b08; }
+  .room.one { width: 180px; height: 180px; }         /* single room */
+  .rooms { display: flex; gap: 0; }                   /* rooms flush so they blend */
+  .rooms .room { width: 140px; height: 140px; border-right: none; }
+  .rooms .room:last-child { border-right: 1px solid #0d0b08; }
+
+  /* a fog cloud element: absolutely placed, centered on its quadrant, oversized */
+  .fog-cloud { position: absolute; pointer-events: none; overflow: visible;
+               transform: translate(-50%, -50%); }
+  .fog-cloud svg { position: absolute; inset: 0; width: 100%; height: 100%;
+                   display: block; overflow: visible; }
+  .fog-rock { animation: fog-rock 7s ease-in-out infinite; }
+  @keyframes fog-rock { 0%{transform:rotate(-1.5deg);} 50%{transform:rotate(1.5deg);} 100%{transform:rotate(-1.5deg);} }
+</style>
+</head>
+<body>
+  <h1>☁ Fog Cloud ☁</h1>
+  <p class="note">Every cloud is generated fresh (no two alike). Each fog covers one
+  quadrant but its box exceeds the quadrant so neighbors overlap and blend into a
+  continuous bank. Shown large (one cloud), a single fogged room (2×2 quadrants),
+  and a strip of rooms flush together to confirm room-to-room blending.
+  <br>Use Reroll to resample and re-confirm blending.</p>
+  <button class="btn" id="reroll">⟳ Reroll all fog</button>
+
+  <div class="row">
+    <div class="card"><div class="big" id="big"></div><div class="lbl">one cloud (shape)</div></div>
+    <div class="card"><div class="room one" id="oneroom"></div><div class="lbl">one room fogged (2×2)</div></div>
+    <div class="card"><div class="rooms" id="strip"></div><div class="lbl">rooms flush — room-to-room blend</div></div>
+  </div>
+
+  <script>
+    // makeFog(): mirror of ui.js — a scatter of ~40 mostly-transparent gray blobs,
+    // rejection-sampled for spacing, in a viewBox padded so nothing clips. Fresh
+    // Math.random() each call, so no two clouds are alike.
+    function makeFog() {
+      const N = 200, R_MIN = 13, R_MAX = 20;
+      const COLORS = ['#4a4d53', '#565a60', '#3f4247', '#616570'];
+      const MIN_DIST = 5, MAX_TRIES = 60;
+      const TILE = 50, SPILL = 90, PAD = R_MAX + 2;
+      const FIELD = TILE + 2 * SPILL;
+      const SPAN_MIN = PAD, SPAN_MAX = PAD + FIELD;
+      const SIZE = FIELD + 2 * PAD, CENTER = SIZE / 2;
+      const rangeR = (a, b) => a + (b - a) * Math.random();
+      const blobs = [];
+      for (let i = 0; i < N; i++) {
+        let cx, cy;
+        for (let t = 0; t < MAX_TRIES; t++) {
+          cx = rangeR(SPAN_MIN, SPAN_MAX); cy = rangeR(SPAN_MIN, SPAN_MAX);
+          if (!blobs.some(b => Math.hypot(cx - b.cx, cy - b.cy) < MIN_DIST)) break;
+        }
+        blobs.push({ cx, cy, r: rangeR(R_MIN, R_MAX), op: rangeR(0.14, 0.30),
+          fill: COLORS[Math.floor(Math.random() * COLORS.length)] });
+      }
+      const circles = blobs.map(b =>
+        `<circle cx="${b.cx.toFixed(1)}" cy="${b.cy.toFixed(1)}" r="${b.r.toFixed(1)}" ` +
+        `fill="${b.fill}" opacity="${b.op.toFixed(2)}"/>`).join('');
+      const el = document.createElement('div');
+      el.className = 'fog-cloud';
+      el.innerHTML =
+        `<svg viewBox="0 0 ${SIZE} ${SIZE}" xmlns="http://www.w3.org/2000/svg" overflow="visible">` +
+          `<g class="fog-rock" style="transform-origin:${CENTER}px ${CENTER}px">${circles}</g>` +
+        '</svg>';
+      return el;
+    }
+
+    // fill a room element with four quadrant fogs, each centered on its quadrant
+    // and sized OVER (fraction of the room) so cores cover quadrants and spill
+    // overlaps neighbors. size is a % of the room dimension.
+    function fillRoom(room, sizePct) {
+      room.innerHTML = '';
+      for (const [qx, qy] of [[0,0],[1,0],[0,1],[1,1]]) {
+        const fog = makeFog();
+        fog.style.width = fog.style.height = sizePct + '%';
+        fog.style.left = (qx ? 75 : 25) + '%';
+        fog.style.top  = (qy ? 75 : 25) + '%';
+        room.appendChild(fog);
+      }
+    }
+
+    function render() {
+      // big single cloud
+      const big = document.getElementById('big');
+      big.innerHTML = '';
+      const one = makeFog();
+      one.style.width = one.style.height = '116%';
+      one.style.left = one.style.top = '50%';
+      big.appendChild(one);
+
+      // single room: each quadrant fog sized 58% of the room (≈116% of a quadrant)
+      fillRoom(document.getElementById('oneroom'), 58);
+
+      // strip of 3 rooms, flush, same sizing — check the seam between rooms blends
+      const strip = document.getElementById('strip');
+      strip.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const room = document.createElement('div');
+        room.className = 'room';
+        strip.appendChild(room);
+        fillRoom(room, 58);
+      }
+    }
+
+    document.getElementById('reroll').addEventListener('click', render);
+    render();
+  </script>
+</body>
+</html>

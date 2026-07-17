@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Hero candidates — contact sheet</title>
+<style>
+  body {
+    margin: 0; padding: 24px;
+    background: #0a0a0f;
+    color: #b8a878;
+    font-family: 'Cinzel', Georgia, serif;
+  }
+  h1 { color: #c9a84c; font-size: 20px; letter-spacing: 2px; text-align: center; }
+  p.note { text-align: center; font-size: 12px; color: #7a5c1e; max-width: 640px; margin: 0 auto 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    border: 1px solid #5a3e10;
+    background: #0d0d14;
+    padding: 12px;
+    text-align: center;
+  }
+  .name { font-size: 12px; color: #c9a84c; letter-spacing: 1px; margin-bottom: 10px; }
+  /* Large view */
+  .big { width: 150px; height: 150px; background: #14110c; border: 1px solid #2a1f0a; }
+  /* True-to-game view: on a flagstone-ish tile at ~cell size */
+  .row2 { display: flex; justify-content: center; gap: 10px; margin-top: 10px; align-items: flex-end; }
+  .cell {
+    width: 70px; height: 70px;
+    background:
+      linear-gradient(#1a1712,#1a1712);
+    border: 1px solid #0d0b08;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cell.sm { width: 46px; height: 46px; }
+  .cell img { width: 100%; height: 100%; }
+  .lbl { font-size: 9px; color: #5a4a2a; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>⚔ Hero Candidates ⚔</h1>
+  <p class="note">Peasant-turned-hero, Link-vibes. Each shown large, then at two
+  in-game cell sizes on the flagstone color so you can judge legibility. Bow is
+  the canonical weapon (the agent shoots the arrow).</p>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const files = [
+      'hero-01-tunic-sword.svg',
+      'hero-02-breastplate-peasant.svg',
+      'hero-03-hooded-lantern.svg',
+      'hero-04-archer-drawn.svg',
+      'hero-05-bow-slung-standing.svg',
+      'hero-06-leather-cap-archer.svg',
+      'hero-07-chainmail-bow.svg',
+      'hero-08-lantern-lean-bowback.svg',
+      'hero-09-lantern-lean-tabard.svg',
+      'hero-10-chibi-lantern-bow.svg',
+      'hero-10a-fixed.svg',
+      'hero-10b-fixed.svg',
+      'hero-10c-fixed.svg',
+      'hero-10a2.svg',
+      'hero-10a3.svg',
+    ];
+    const grid = document.getElementById('grid');
+    for (const f of files) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        `<div class="name">${f.replace('hero-','').replace('.svg','')}</div>` +
+        `<img class="big" src="${f}" alt="${f}">` +
+        `<div class="row2">` +
+          `<div><div class="cell"><img src="${f}"></div><div class="lbl">70px</div></div>` +
+          `<div><div class="cell sm"><img src="${f}"></div><div class="lbl">46px</div></div>` +
+        `</div>`;
+      grid.appendChild(card);
+    }
+  </script>
+</body>
+</html>

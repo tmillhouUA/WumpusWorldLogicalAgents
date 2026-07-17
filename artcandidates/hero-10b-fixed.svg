@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 10b: same four fixes as 10a, variant details —
+       bow slung with a MORE PRONOUNCED diagonal (a taller, clearer stave
+       across the back), lantern hangs from a longer arm, quiver a bit higher
+       so the arrow fletching clears the head. Slightly taller head-to-body. -->
+  <title>Hero 10b — chibi delver, fixes (longer reach, taller bow)</title>
+
+  <ellipse cx="50" cy="88" rx="17" ry="3.6" fill="#000" opacity="0.35"/>
+
+  <!-- bow: bold diagonal across the back -->
+  <path d="M33 40 Q27 57 39 74" fill="none" stroke="#6b4c26" stroke-width="3"/>
+  <line x1="33" y1="40" x2="39" y2="74" stroke="#d8d2c0" stroke-width="0.7"/>
+  <!-- quiver behind the RIGHT shoulder, riding high -->
+  <rect x="60" y="42" width="6" height="17" rx="2" fill="#5a3d1e" transform="rotate(20 63 50)"/>
+  <line x1="66" y1="43" x2="72" y2="34" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="64" y1="42" x2="69" y2="32" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="62" y1="42" x2="66" y2="31" stroke="#8a6a3a" stroke-width="1"/>
+
+  <!-- legs -->
+  <path d="M45 70 L43 84 L49 84 L50 71 Z" fill="#5a4327"/>
+  <path d="M55 70 L57 84 L51 84 L50 71 Z" fill="#4c3820"/>
+  <ellipse cx="45" cy="85.5" rx="4" ry="2.5" fill="#3a2b18"/>
+  <ellipse cx="55" cy="85.5" rx="4" ry="2.5" fill="#312414"/>
+
+  <!-- tunic -->
+  <path d="M42 56 Q50 53 58 56 L56 71 Q50 74 44 71 Z" fill="#3f7d3a"/>
+  <path d="M44 69 L47 73 L50 69 L53 73 L56 71 Q50 74 44 71 Z" fill="#356b31"/>
+  <rect x="43" y="66" width="14" height="3" fill="#5a3d1e"/>
+
+  <!-- neck -->
+  <rect x="46" y="50" width="7" height="7" rx="1.5" fill="#d9a978"/>
+
+  <!-- rear arm -->
+  <path d="M56 58 L61 65 L58 67 L53 60 Z" fill="#c98d5a"/>
+
+  <!-- head + hood -->
+  <circle cx="49" cy="37" r="14" fill="#e0b083"/>
+  <path d="M35 38 Q34 19 49 19 Q64 19 63 36 L58 31 Q49 25 41 32 Z" fill="#3f7d3a"/>
+  <path d="M38 33 Q49 28 60 33 L57 37 Q49 33 41 37 Z" fill="#8a6a3a"/>
+  <circle cx="45" cy="39" r="2" fill="#2a2018"/>
+  <circle cx="54" cy="39" r="2" fill="#2a2018"/>
+  <circle cx="45.6" cy="38.3" r="0.6" fill="#fff"/>
+  <circle cx="54.6" cy="38.3" r="0.6" fill="#fff"/>
+
+  <!-- front arm, longer reach forward -->
+  <path d="M45 60 L28 62 L29 66 L46 65 Z" fill="#c98d5a"/>
+  <circle cx="28.5" cy="64" r="2.4" fill="#d9a978"/>
+
+  <!-- lantern hanging below the hand -->
+  <line x1="28.5" y1="65.5" x2="28.5" y2="69" stroke="#3a2b18" stroke-width="0.8"/>
+  <path d="M24.5 70 Q28.5 65 32.5 70" fill="none" stroke="#5a3d1e" stroke-width="1"/>
+  <rect x="24" y="70" width="9" height="11" rx="1" fill="#5a3d1e"/>
+  <rect x="25.5" y="71.5" width="6" height="8" fill="#ffcf6b"/>
+  <ellipse cx="28.5" cy="75.5" rx="2.2" ry="3" fill="#fff2b0"/>
+  <circle cx="28.5" cy="75.5" r="13" fill="#ffcf6b" opacity="0.15"/>
+  <circle cx="28.5" cy="75.5" r="7" fill="#ffcf6b" opacity="0.15"/>
+</svg>

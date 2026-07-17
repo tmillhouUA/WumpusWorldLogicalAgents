@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 03: Cautious hooded delver holding a lantern — fits the dungeon fog
+       theme. Green-brown cloak over a tunic, one hand raising a small
+       flame. Quest-explorer read rather than warrior. -->
+  <title>Hero 03 — hooded delver with lantern</title>
+  <ellipse cx="50" cy="93" rx="19" ry="4" fill="#000" opacity="0.35"/>
+  <!-- cloak / robe body -->
+  <path d="M34 46 Q50 40 66 46 L63 88 Q50 92 37 88 Z" fill="#3a5f3a"/>
+  <path d="M37 88 L43 80 L50 88 L57 80 L63 88 Q50 92 37 88 Z" fill="#31512f"/>
+  <!-- inner tunic V -->
+  <path d="M46 46 L50 58 L54 46 Z" fill="#8a5a34"/>
+  <!-- belt -->
+  <rect x="40" y="62" width="20" height="4" fill="#5a3d1e"/>
+  <!-- left arm holding lantern out -->
+  <path d="M35 50 L24 58 L27 62 L38 55 Z" fill="#3a5f3a"/>
+  <path d="M25 56 L23 60 L28 60 L30 56 Z" fill="#c98d5a"/>
+  <!-- lantern -->
+  <rect x="21" y="60" width="8" height="10" rx="1" fill="#5a3d1e"/>
+  <rect x="22.5" y="61.5" width="5" height="7" fill="#ffcf6b"/>
+  <circle cx="25" cy="65" r="2" fill="#fff2b0"/>
+  <path d="M21 60 Q25 55 29 60" fill="none" stroke="#5a3d1e" stroke-width="1"/>
+  <!-- lantern glow -->
+  <circle cx="25" cy="65" r="11" fill="#ffcf6b" opacity="0.15"/>
+  <!-- right arm at side -->
+  <path d="M65 50 L71 64 L66 65 L61 52 Z" fill="#3a5f3a"/>
+  <!-- head + deep hood -->
+  <path d="M39 34 Q39 19 50 19 Q61 19 61 34 L61 40 Q50 44 39 40 Z" fill="#3a5f3a"/>
+  <path d="M43 33 Q44 24 50 24 Q56 24 57 33 L54 38 Q50 40 46 38 Z" fill="#241a10"/>
+  <circle cx="50" cy="34" r="6" fill="#c98d5a"/>
+  <circle cx="47.5" cy="34" r="1.1" fill="#fff2b0"/>
+  <circle cx="52.5" cy="34" r="1.1" fill="#fff2b0"/>
+</svg>

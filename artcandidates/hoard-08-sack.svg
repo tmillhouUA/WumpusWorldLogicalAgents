@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 08: an overflowing burlap sack of gold (the "loot bag") with coins
+       tumbling out — a slightly different container motif. Rays off the mouth. -->
+  <title>Hoard 08 — sack of gold</title>
+
+  <g stroke="#ffe9a0" stroke-linecap="round" opacity="0.5">
+    <line x1="50" y1="42" x2="50" y2="10" stroke-width="2.2"/>
+    <line x1="50" y1="42" x2="36" y2="16" stroke-width="1.4"/>
+    <line x1="50" y1="42" x2="64" y2="16" stroke-width="1.4"/>
+    <line x1="50" y1="42" x2="26" y2="30" stroke-width="1.1"/>
+    <line x1="50" y1="42" x2="74" y2="30" stroke-width="1.1"/>
+  </g>
+  <circle cx="50" cy="54" r="26" fill="#f0c040" opacity="0.1"/>
+
+  <ellipse cx="50" cy="86" rx="30" ry="6" fill="#000" opacity="0.3"/>
+
+  <!-- gold mounding out of the sack mouth -->
+  <path d="M36 48 Q50 38 64 48 Q50 54 36 48 Z" fill="#e0b83e"/>
+  <ellipse cx="50" cy="46" rx="10" ry="4" fill="#f0c040"/>
+
+  <!-- burlap sack body -->
+  <path d="M34 50 Q30 84 50 86 Q70 84 66 50 Q50 58 34 50 Z" fill="#9a8452"/>
+  <path d="M34 50 Q30 84 50 86 Q70 84 66 50 Q50 58 34 50 Z" fill="none" stroke="#6b5636" stroke-width="1"/>
+  <!-- sack folds -->
+  <path d="M42 58 Q44 72 42 84" fill="none" stroke="#7a6642" stroke-width="0.8"/>
+  <path d="M58 58 Q56 72 58 84" fill="none" stroke="#7a6642" stroke-width="0.8"/>
+  <!-- tie band at the neck -->
+  <path d="M36 50 Q50 56 64 50" fill="none" stroke="#5a3d1e" stroke-width="2"/>
+
+  <!-- spilling coins -->
+  <g fill="#f0c040" stroke="#a8822e" stroke-width="0.8">
+    <ellipse cx="32" cy="80" rx="5.5" ry="2.7"/>
+    <ellipse cx="26" cy="84" rx="5" ry="2.5"/>
+    <ellipse cx="70" cy="82" rx="5.5" ry="2.7"/>
+    <ellipse cx="50" cy="44" rx="5" ry="2.3"/>
+  </g>
+  <g fill="#fff6d8"><circle cx="49" cy="43" r="1"/><circle cx="31" cy="79" r="0.8"/></g>
+</svg>

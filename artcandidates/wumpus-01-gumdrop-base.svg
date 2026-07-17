@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 01: the baseline. Gumdrop body (dome top, wide base), face filling most
+       of it: two eyes + eyebrows, mouth with fangs. Arms stick straight out
+       from the sides at eye level (~2/3 up). Two long feet on very short legs.
+       Mossy dungeon-green hide, gold eyes. Neutral/curious expression. -->
+  <title>Wumpus 01 — gumdrop base form</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <!-- long feet on short legs -->
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>          <!-- short leg L -->
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>          <!-- short leg R -->
+  <ellipse cx="38" cy="86" rx="11" ry="4.5" fill="#4a5730"/>         <!-- long foot L -->
+  <ellipse cx="62" cy="86" rx="11" ry="4.5" fill="#4a5730"/>         <!-- long foot R -->
+
+  <!-- arms out the sides at eye level -->
+  <path d="M22 50 Q12 46 8 50 Q12 54 22 54 Z" fill="#5a6b3a"/>       <!-- arm L -->
+  <path d="M78 50 Q88 46 92 50 Q88 54 78 54 Z" fill="#5a6b3a"/>      <!-- arm R -->
+
+  <!-- gumdrop body/head -->
+  <path d="M22 78 Q18 20 50 18 Q82 20 78 78 Z" fill="#5a6b3a"/>
+  <path d="M28 76 Q26 30 50 28 Q74 30 72 76 Z" fill="#66783f"/>      <!-- belly/face lighter -->
+
+  <!-- eyebrows -->
+  <path d="M32 40 L44 43" fill="none" stroke="#2f3a1c" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M68 40 L56 43" fill="none" stroke="#2f3a1c" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- eyes -->
+  <ellipse cx="39" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <ellipse cx="61" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <circle cx="40" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="60" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="40" cy="50" r="1.5" fill="#1a1408"/>
+  <circle cx="60" cy="50" r="1.5" fill="#1a1408"/>
+
+  <!-- mouth with fangs -->
+  <path d="M38 62 Q50 68 62 62 Q50 65 38 62 Z" fill="#2a1818"/>
+  <polygon points="42,62.5 46,62.5 44,68" fill="#f4ecd0"/>          <!-- fang L -->
+  <polygon points="54,62.5 58,62.5 56,68" fill="#f4ecd0"/>          <!-- fang R -->
+</svg>

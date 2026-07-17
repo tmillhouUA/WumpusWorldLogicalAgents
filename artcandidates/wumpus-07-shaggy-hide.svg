@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 07: textured hide — a shaggy/furred gumdrop silhouette (ragged edge) for
+       a more beastly look, plus small horns at the dome. Same face layout. -->
+  <title>Wumpus 07 — shaggy hide with little horns</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>
+  <ellipse cx="38" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+  <ellipse cx="62" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+
+  <path d="M22 50 Q12 46 8 50 Q12 54 22 54 Z" fill="#556635"/>
+  <path d="M78 50 Q88 46 92 50 Q88 54 78 54 Z" fill="#556635"/>
+
+  <!-- little horns -->
+  <polygon points="34,22 30,12 38,20" fill="#3f4a29"/>
+  <polygon points="66,22 70,12 62,20" fill="#3f4a29"/>
+
+  <!-- shaggy-edged gumdrop (ragged outline via a spiky path) -->
+  <path d="M22 78 Q19 24 34 20 Q40 24 50 18 Q60 24 66 20 Q81 24 78 78
+           Q74 74 72 80 Q68 74 64 80 Q60 74 56 80 Q52 74 50 80
+           Q48 74 44 80 Q40 74 36 80 Q32 74 28 80 Q24 74 22 78 Z" fill="#556635"/>
+  <path d="M29 74 Q27 32 50 30 Q73 32 71 74 Z" fill="#617139"/>
+
+  <path d="M32 40 L44 43" fill="none" stroke="#2a331a" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M68 40 L56 43" fill="none" stroke="#2a331a" stroke-width="2.4" stroke-linecap="round"/>
+
+  <ellipse cx="39" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <ellipse cx="61" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <circle cx="40" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="60" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="40" cy="50" r="1.5" fill="#1a1408"/>
+  <circle cx="60" cy="50" r="1.5" fill="#1a1408"/>
+
+  <path d="M37 62 Q50 69 63 62 Q50 66 37 62 Z" fill="#2a1818"/>
+  <polygon points="41,62.5 45,62.5 43,68" fill="#f4ecd0"/>
+  <polygon points="55,62.5 59,62.5 57,68" fill="#f4ecd0"/>
+</svg>

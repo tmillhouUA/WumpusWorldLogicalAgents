@@ -7,15 +7,161 @@
    For now we use a simple CSS grid so the four panels are visible and
    easy to rearrange once we tune sizes. */
 
+/* ---- theme palette ----
+   Retro dungeon-crawler look (see styleref.html). Near-black voids lit by
+   antique gold, blood red, and neon accents. These custom properties are the
+   single source of truth for color; the sections below draw from them. */
+:root {
+  --gold:        #c9a84c;
+  --gold-bright: #f0c040;
+  --gold-dim:    #7a5c1e;
+  --blood:       #8b0000;
+  --blood-bright:#cc2200;
+  --neon-green:  #00ff41;
+  --neon-teal:   #00e5ff;
+  --neon-purple: #cc00ff;
+  --bg-void:     #050508;   /* page background */
+  --bg-panel:    #0a0a0f;   /* panel background */
+  --bg-panel2:   #0d0d14;   /* inset boxes within a panel */
+  --border-dark: #2a1f0a;
+  --border-glow: #5a3e10;
+  --text-body:   #b8a878;
+  --text-dim:    #5a4a2a;
+
+  /* Font stacks. The named faces come from the Google Fonts link in index.html
+     (self-host TODO noted there); the fallbacks keep things legible before the
+     web fonts load. */
+  --font-title: 'UnifrakturMaguntia', 'Cinzel', serif;
+  --font-label: 'Cinzel', Georgia, serif;
+  --font-mono:  'Share Tech Mono', ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* ---- dungeon textures (procedural, offline) ----
+     Two tiling SVG data-URIs for the game board (Step 2). Both are drawn in the
+     same dark stone family so wall and floor read as one dungeon.
+
+     FLOOR — one ROOM = FOUR flagstone slabs in the ORIGINAL tile style, one per
+     quadrant (viewBox 100x100; each slab 50x50). Each slab keeps the original
+     look: base fill #1a1712, mottle blobs #211d16, and the double-stroke slab
+     seam (dark #0d0b08 outer + light #272115 inner). The four slabs register the
+     four feature quadrants (breeze / stench / pit-or-wumpus / gold). Stretched
+     to fill one room (wall-center to wall-center). */
+  --tex-floor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect width='100' height='100' fill='%231a1712'/%3E%3Cg fill='%23211d16'%3E%3Ccircle cx='13' cy='16' r='8'/%3E%3Ccircle cx='37' cy='35' r='10'/%3E%3Ccircle cx='63' cy='13' r='6'/%3E%3Ccircle cx='88' cy='37' r='9'/%3E%3Ccircle cx='16' cy='63' r='7'/%3E%3Ccircle cx='38' cy='88' r='8'/%3E%3Ccircle cx='63' cy='66' r='10'/%3E%3Ccircle cx='84' cy='84' r='7'/%3E%3C/g%3E%3Cg fill='none' stroke='%230d0b08' stroke-width='2'%3E%3Crect x='1' y='1' width='48' height='48'/%3E%3Crect x='51' y='1' width='48' height='48'/%3E%3Crect x='1' y='51' width='48' height='48'/%3E%3Crect x='51' y='51' width='48' height='48'/%3E%3C/g%3E%3Cg fill='none' stroke='%23272115' stroke-width='1'%3E%3Crect x='2' y='2' width='46' height='46'/%3E%3Crect x='52' y='2' width='46' height='46'/%3E%3Crect x='2' y='52' width='46' height='46'/%3E%3Crect x='52' y='52' width='46' height='46'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* WALL — the wall is BUILT from blocks (Step 2), not a tiled sheet:
+       - a square CORNER post at every wall junction, and
+       - between two adjacent corners, a run of 4 rectangular blocks.
+     A DOORWAY drops the middle 2 blocks of a run, leaving the 2 outer blocks
+     (one against each corner) with an opening between them.
+
+     Each SVG below is stretched (background-size:100% 100%, viewBox units are
+     arbitrary) to exactly fill its wall element, so block edges always land on
+     the wall's edges regardless of board size. Fill/stroke = block face / mortar.
+
+     Corner post: one square block. */
+  --tex-post:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' preserveAspectRatio='none'%3E%3Crect width='10' height='10' fill='%23070604'/%3E%3Crect x='0.6' y='0.6' width='8.8' height='8.8' fill='%23171009' stroke='%232a1f0a' stroke-width='0.8'/%3E%3C/svg%3E");
+
+  /* Horizontal run, SOLID: 4 blocks side by side (viewBox 40 wide x 10 tall). */
+  --tex-run-h:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 10' preserveAspectRatio='none'%3E%3Crect width='40' height='10' fill='%23070604'/%3E%3Cg fill='%23171009' stroke='%232a1f0a' stroke-width='0.8'%3E%3Crect x='0.5' y='0.6' width='9' height='8.8'/%3E%3Crect x='10.5' y='0.6' width='9' height='8.8'/%3E%3Crect x='20.5' y='0.6' width='9' height='8.8'/%3E%3Crect x='30.5' y='0.6' width='9' height='8.8'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Horizontal run, DOORWAY: only the 2 outer blocks (middle 2 dropped). The
+     gap is transparent so the floor/passage shows through. */
+  --tex-run-h-door:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 10' preserveAspectRatio='none'%3E%3Cg fill='%23171009' stroke='%232a1f0a' stroke-width='0.8'%3E%3Crect x='0.5' y='0.6' width='9' height='8.8'/%3E%3Crect x='30.5' y='0.6' width='9' height='8.8'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Vertical run, SOLID: 4 blocks stacked (viewBox 10 wide x 40 tall). */
+  --tex-run-v:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 40' preserveAspectRatio='none'%3E%3Crect width='10' height='40' fill='%23070604'/%3E%3Cg fill='%23171009' stroke='%232a1f0a' stroke-width='0.8'%3E%3Crect x='0.6' y='0.5' width='8.8' height='9'/%3E%3Crect x='0.6' y='10.5' width='8.8' height='9'/%3E%3Crect x='0.6' y='20.5' width='8.8' height='9'/%3E%3Crect x='0.6' y='30.5' width='8.8' height='9'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Vertical run, DOORWAY: only the 2 outer (top/bottom) blocks. */
+  --tex-run-v-door:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 40' preserveAspectRatio='none'%3E%3Cg fill='%23171009' stroke='%232a1f0a' stroke-width='0.8'%3E%3Crect x='0.6' y='0.5' width='8.8' height='9'/%3E%3Crect x='0.6' y='30.5' width='8.8' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #f4f4f4;
+  color: var(--text-body);
+  font-family: var(--font-mono);
+  /* Faint CRT scanlines over a speckled void, per the reference. */
+  background-color: var(--bg-void);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 2px,
+      rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23050508'/%3E%3Ccircle cx='40' cy='40' r='1' fill='%23151008' opacity='0.8'/%3E%3Ccircle cx='10' cy='10' r='0.5' fill='%23201508' opacity='0.5'/%3E%3Ccircle cx='70' cy='30' r='0.5' fill='%23201508' opacity='0.5'/%3E%3C/svg%3E");
+
+  /* Header at natural height, #app fills the rest — so the grid still sizes to
+     the viewport now that a title bar sits above it. height:100vh (not
+     min-height) + overflow:hidden bounds the whole page to the viewport, so a
+     tall panel can't push the layout past one screen. */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- title bar ---- */
+
+#site-header {
+  flex: 0 0 auto;
+  position: relative;
+  text-align: center;
+  padding: 12px 0 9px;
+  background: linear-gradient(180deg, #0a0005 0%, var(--bg-void) 100%);
+  border-bottom: 3px solid var(--gold-dim);
+}
+/* Crossed-sword runes flanking the title. */
+#site-header::before,
+#site-header::after {
+  content: '⚔';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 26px;
+  color: var(--blood);
+  text-shadow: 0 0 12px var(--blood-bright);
+}
+#site-header::before { left: 34px; }
+#site-header::after  { right: 34px; }
+
+.site-title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-dim), 0 0 40px rgba(180,100,0,0.3);
+}
+.site-subtitle {
+  margin: 5px 0 0;
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--blood-bright);
+  animation: flicker 4s infinite;
+}
+/* Occasional dim flicker, like failing torchlight. */
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.6; }
+  97% { opacity: 1; }
+  98% { opacity: 0.4; }
+  99% { opacity: 0.9; }
 }
 
 #app {
+  flex: 1;
+  min-height: 0;
   display: grid;
   /* left = n/2, center = n, right = n/2  ->  columns 1fr 2fr 1fr */
   grid-template-columns: 1fr 2fr 1fr;
@@ -29,43 +175,88 @@ body {
   grid-template-rows: repeat(24, 1fr);
   gap: 8px;
   padding: 8px;
-  height: 100vh;
+  /* Height comes from flex:1 in the body column (fills below the header) — no
+     100vh here, which would ignore the header and overflow the page. */
+  min-height: 0;
 }
 
 /* Ask and Controls are SWAPPED vs. before: Ask now sits bottom-RIGHT (short),
-   Controls bottom-LEFT. */
-#kb-panel      { grid-column: 1; grid-row: 1 / span 15; }
-#control-panel { grid-column: 1; grid-row: 16 / span 9; }
+   Controls bottom-LEFT. KB was trimmed (15->13) to give Controls more room
+   (9->11); Solver/Ask keep their 20/4 split (Ask sized to just its controls). */
+#kb-panel      { grid-column: 1; grid-row: 1 / span 13; }
+#control-panel { grid-column: 1; grid-row: 14 / span 11; }
 #game-panel    { grid-column: 2; grid-row: 1 / span 24; }
 #solver-panel  { grid-column: 3; grid-row: 1 / span 20; }
 #ask-panel     { grid-column: 3; grid-row: 21 / span 4; }
 
+/* Panel-box frame: dark box, glowing border, sharp corners, plus a faint inner
+   double-border (the ::before) for the layered dungeon-UI look. */
 .panel {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-glow);
   padding: 10px;
   overflow: auto;
 }
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(180,100,0,0.08);
+  pointer-events: none;
+}
 
+/* Section title: Cinzel small-caps in gold, centered under a glowing rule. */
 .panel h2 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #555;
+  margin: 0 0 10px;
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 3px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-glow);
+  text-shadow: 0 0 6px rgba(180,100,0,0.5);
 }
 
 /* ---- basic ground-truth grid view ---- */
 
+/* Toolbar sits BELOW the board now: New Map button on the left, status on the
+   right, framed off from the board by a glowing top rule. */
 .toolbar {
-  margin-bottom: 8px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-glow);
+}
+.new-map-btn {
+  font-family: var(--font-label);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  color: var(--gold-dim);
+  background: #0a0a14;
+  border: 1px solid var(--border-glow);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.new-map-btn:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: rgba(180,100,0,0.10);
+  text-shadow: 0 0 6px var(--gold);
+  box-shadow: 0 0 8px rgba(180,100,0,0.2);
 }
 
-/* The game panel stacks its heading, the toolbar, then the board; the board is
-   a square that fits the leftover space, and any space beneath it is headroom
-   for future bottom-of-board controls. */
+/* The game panel stacks its heading, then the board (fills the flexible space),
+   then the toolbar beneath. */
 #game-panel {
   display: flex;
   flex-direction: column;
@@ -81,30 +272,87 @@ body {
    rows and stretched the horizontal gap lines). align-self:center centers the
    board horizontally (the cross axis of this column) while the default main-axis
    flex-start keeps it pinned to the top — headroom pools below.
-   Grid lines are a SINGLE source: the #333 board background showing through the
-   gap (outer padding = the edge). Cells carry no border, so every line — interior
-   and edge — is the same color and width. */
+   The WALL is BUILT from block elements laid into an interleaved track grid
+   (see ui.js). Tracks alternate post|cell|post|…|post — (2n+1) per axis. Posts
+   (fixed --wall-th) hold corner blocks and wall runs; cell tracks (1fr) hold
+   the floor tiles. Every wall run is a 4-block SVG; interior runs are doorways
+   (middle 2 blocks dropped), boundary runs are solid. ui.js sets the template. */
 .grid {
+  --wall-th: 18px;      /* wall thickness = post-track size; tune to taste */
+  position: relative;   /* positioning context for the floor underlay */
   display: grid;
-  gap: 1px;
-  background: #333;
-  padding: 1px;
+  gap: 0;
+  background: none;
   width: 80%;
   aspect-ratio: 1;
+  /* Square driven by width (single constraint). Don't grow — growing height
+     would fight aspect-ratio and stretch the board rectangular (the old bug).
+     Instead flex-shrink + max-height:100% caps it to the space left above the
+     toolbar (both are flex siblings in #game-panel), and margin-top:auto pushes
+     the board+headroom up so any slack pools between board and toolbar.
+     align-self centers it horizontally. */
+  flex: 0 1 auto;
   max-height: 100%;
   min-height: 0;
   align-self: center;
 }
 
+/* Per-room floor: the element fills its cell track exactly (centered on the
+   room). Its ::before carries the flagstone tile and is inset NEGATIVELY by half
+   a wall on every side, expanding SYMMETRICALLY around the room to reach
+   WALL-CENTER to WALL-CENTER — so the stones bleed under the walls and through
+   doorways while the 2x2 seams stay registered to the room (edges + center),
+   cueing the four feature quadrants.
+
+   Why a pseudo-element and not a negative margin: negative margins on a grid
+   item shift/resize it asymmetrically (it drifted onto the corners). An absolute
+   child inset from a positioned parent grows evenly on all sides. Sits UNDER the
+   wall blocks (z-index 0). Adjacent rooms' ::before boxes overlap on the shared
+   wall strip — harmless: hidden under an opaque wall, pure floor under a door. */
+.room-floor {
+  position: relative;
+  z-index: 0;
+}
+.room-floor::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--wall-th) / -2);
+  background-image: var(--tex-floor);
+  background-color: #1a1712;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* ---- wall block elements (laid into the interleaved grid by ui.js) ----
+   Each stretches its SVG to fill its track slot (100% 100%), so the fixed block
+   count in the SVG makes block edges coincide with the wall's edges at any size.
+   z-index lifts the blocks above the floor underlay. */
+.wall {
+  position: relative;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+.wall-post   { background-image: var(--tex-post); }
+.wall-h      { background-image: var(--tex-run-h); }
+.wall-h.door { background-image: var(--tex-run-h-door); }
+.wall-v      { background-image: var(--tex-run-v); }
+.wall-v.door { background-image: var(--tex-run-v-door); }
+
+/* Cells are now transparent content layers OVER the shared floor underlay (they
+   no longer paint their own floor). They sit above the underlay so their
+   text/glyphs are visible. */
 .grid-cell {
-  background: #fafafa;
+  position: relative;
+  z-index: 1;
+  background: none;
   padding: 4px;
   font-size: 11px;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  position: relative;
-  overflow: hidden;
+  /* no overflow clip: the player token may extend slightly past the room (e.g.
+     when nudged up) and must not be cut off */
 }
 
 .grid-cell .coord {
@@ -112,56 +360,242 @@ body {
   top: 2px;
   right: 3px;
   font-size: 9px;
-  color: #aaa;
+  color: var(--text-dim);   /* legible on dark stone (was #aaa for the old floor) */
 }
 
+/* Player token: the hero SVG, centered horizontally, its CENTER at ~50% of the
+   room height (starting placement — we'll tweak size/position from here). */
+.player-token {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* nudge up a touch via the transform (not top), so the fit box / size is
+     unchanged — only the position shifts */
+  transform: translate(-50%, calc(-50% - 3px));
+  width: 63%;
+  height: 63%;
+  object-fit: contain;
+  pointer-events: none;   /* clicks fall through to the cell (query target) */
+  z-index: 2;
+}
+
+/* Wumpus token — like the player token, but its SVG viewBox is taller
+   (0 -12 100 112) to hold the stench lines above the head, so it's sized a bit
+   larger to make the body itself comparable, and object-fit keeps it centered. */
+.wumpus-token {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Gold hoard token — a floor treasure, so it fills much of the room and sits
+   centered (its pile already bottoms out in its own viewBox). */
+.hoard-token {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Percept glyph (breeze swirl / stench wisps) — a secondary cue, centered and
+   modest. (Will eventually live in a cell quadrant; centered for now.) */
+.percept-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+/* The breeze glyph is a generated <div> holding an inline <svg>; size the svg
+   to fill the glyph box. */
+.breeze-glyph svg { width: 100%; height: 100%; display: block; }
+
+/* Fog cloud — covers one UNKNOWN quadrant. The generated svg draws a fog core
+   in its MIDDLE (~50 of a 116 viewBox) with transparent PAD margin around it,
+   so to make that core fill a quadrant the element must be sized well OVER a
+   quadrant and allowed to overflow: the transparent margin then overhangs into
+   neighboring quadrants, where adjacent fog banks overlap and merge with no
+   seam. Sized ~a full cell (≈ core covers one 50%% quadrant) and centered on
+   its quadrant by the placement code. overflow:visible so the spill shows. */
+.fog-cloud {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 3;              /* fog sits above tokens/percepts: it HIDES them */
+}
+/* inset:0 pins the svg to the fog-cloud box; a bare height:100% collapses here
+   because the parent's height comes from an absolute % (svg would render tiny). */
+.fog-cloud svg { position: absolute; inset: 0; width: 100%; height: 100%;
+                 display: block; overflow: visible; }
+
+/* Gently rock the whole cloud a hair. Applied to the inner <g>; transform-origin
+   is set inline (in user units, the viewBox center) so it pivots about its
+   middle, not the group's bbox. */
+.fog-rock { animation: fog-rock 7s ease-in-out infinite; }
+@keyframes fog-rock {
+  0%   { transform: rotate(-1.5deg); }
+  50%  { transform: rotate( 1.5deg); }
+  100% { transform: rotate(-1.5deg); }
+}
+
+/* Wind arcs (breeze glyph + pit) slowly rotate about the SVG center (50,50 in
+   the 100x100 viewBox). Each arc's duration/direction is set inline (per arc)
+   so they drift in and out of phase — a turbulent swirl. transform-origin in
+   user units targets the glyph center, not each path's own bbox. */
+.wind-arc {
+  transform-origin: 50px 50px;
+  animation-name: wind-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes wind-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ---- wall torch + light ---- */
+
+/* Quarter-circle warm glow radiating from the room's bottom-left corner into
+   the room (only added when lit). A radial gradient positioned at bottom-left;
+   because it's anchored there, only the upper-right quadrant falls inside the
+   room. Sits just above the floor, below token/text. */
+.torch-glow {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 150%;
+  height: 150%;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    circle at bottom left,
+    rgba(255,180,80,0.38) 0%,
+    rgba(255,150,60,0.18) 28%,
+    rgba(255,140,50,0.06) 50%,
+    transparent 66%
+  );
+}
+
+/* Torch bracket + flame, mounted low on the LEFT wall of the room. Placed just
+   left of the room's inner edge so it reads as wall-mounted. */
+.torch {
+  position: absolute;
+  left: -7px;          /* nudge onto the left wall run */
+  bottom: 8%;          /* low, near the bottom-left corner */
+  width: 26%;
+  max-width: 26px;
+  pointer-events: none;
+  z-index: 2;
+}
+.torch svg { width: 100%; height: auto; display: block; }
+
+/* Unlit: hide the flame, leave the dark bracket. */
+.torch:not(.lit) .flame { display: none; }
+
+/* Lit: animate the flame — a gentle flicker (scale + opacity), with a warm
+   drop-shadow glow around the head. */
+.torch.lit .flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: torch-flicker 0.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 3px rgba(255,150,60,0.8));
+}
+.torch.lit .flame-core { animation: torch-core 0.35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes torch-flicker {
+  0%   { transform: scaleY(1)    scaleX(1)    translateX(0);    opacity: 0.95; }
+  100% { transform: scaleY(1.12) scaleX(0.92) translateX(0.3px); opacity: 1; }
+}
+@keyframes torch-core {
+  0%   { transform: scaleY(0.9); opacity: 0.85; }
+  100% { transform: scaleY(1.15); opacity: 1; }
+}
+
+/* ---- pit ----
+   A jagged hole centered in the room, about a doorway wide (~50% of the room),
+   filled with a gray-rim → black-center radial gradient (the SVG carries both
+   the jagged rim and the gradient). Sits above the floor, below token/text. */
+.pit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52%;
+  height: 52%;
+  pointer-events: none;
+  z-index: 1;
+}
+.pit svg { width: 100%; height: 100%; display: block; }
+
+/* NOTE: these text labels are a placeholder — the fog/quadrant/glyph redesign
+   will replace them. Colors bumped only to stay legible on the dark floor. */
 .attr {
   text-transform: capitalize;
+  color: var(--text-body);
 }
 
 .attr.dim {
-  opacity: 0.25;     /* uninferred / unobserved */
+  opacity: 0.35;     /* uninferred / unobserved */
 }
 
 .attr.player {
   font-weight: 700;
-  color: #b00;
+  color: var(--blood-bright);
 }
 
 .attr.neg {
-  color: #2a8a4a;     /* proven-absent: a calm green */
+  color: var(--neon-green);   /* proven-absent */
   font-style: italic;
 }
 
 .toolbar .status {
   margin-left: 10px;
   font-size: 12px;
-  color: #555;
+  color: var(--text-body);
 }
 
 /* ---- knowledge base panel ---- */
 
 .kb-section {
-  border: 1px solid #e2e2e2;
-  border-radius: 4px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-panel2);
   margin-bottom: 4px;
 }
 
 .kb-section summary {
   cursor: pointer;
   padding: 5px 8px;
+  font-family: var(--font-label);
   font-size: 12px;
-  font-weight: 600;
-  color: #444;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1px;
   user-select: none;
 }
 
 .kb-section summary:hover {
-  background: #f6f6f6;
+  background: rgba(180,100,0,0.08);
 }
 
 .kb-count {
-  color: #999;
+  color: var(--text-dim);
   font-weight: 400;
   font-size: 11px;
 }
@@ -174,9 +608,9 @@ body {
 }
 
 .kb-formula {
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: #222;
+  color: var(--text-body);
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
@@ -184,7 +618,7 @@ body {
 
 .kb-empty {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-dim);
   font-style: italic;
 }
 
@@ -202,7 +636,7 @@ body {
 }
 .solver-empty {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-dim);
   font-style: italic;
 }
 
@@ -210,7 +644,7 @@ body {
    is still running, fading slowly in and out, then disappears when done. */
 .resolving {
   font-size: 11px;
-  color: #888;
+  color: var(--neon-teal);
   font-style: italic;
   padding: 4px 2px;
   animation: resolving-pulse 1.4s ease-in-out infinite;
@@ -222,15 +656,16 @@ body {
 
 /* Level 1: an ask. */
 .ask-entry {
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-panel2);
   margin-bottom: 5px;
 }
-/* User-posed asks (vs. the agent's own) get a soft tint so they stand out in
-   the shared log. The inference itself is identical; only the origin differs. */
+/* User-posed asks (vs. the agent's own) get a warm gold-tinted frame so they
+   stand out in the shared log. The inference itself is identical; only the
+   origin differs. */
 .ask-entry.user-posed {
-  background: #fbf6ec;         /* faint warm cream */
-  border-color: #ecdcbf;
+  background: #14100a;         /* faint warm-dark tint */
+  border-color: var(--gold-dim);
 }
 .ask-entry > summary {
   display: flex;
@@ -240,29 +675,30 @@ body {
   padding: 5px 8px;
   font-size: 12px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-body);
   user-select: none;
   list-style: none;
 }
 .ask-entry > summary::-webkit-details-marker { display: none; }
-.ask-entry > summary::before { content: '▸'; font-size: 9px; color: #999; }
+.ask-entry > summary::before { content: '▸'; font-size: 9px; color: var(--gold-dim); }
 .ask-entry[open] > summary::before { content: '▾'; }
-.ask-entry > summary:hover { background: #f6f6f6; }
+.ask-entry > summary:hover { background: rgba(180,100,0,0.08); }
 .ask-query {
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--font-mono);
+  color: var(--gold);
 }
 .ask-result {
   margin-left: auto;
   font-weight: 400;
   font-size: 11px;
-  color: #999;
+  color: var(--text-body);     /* readable "not entailed" — matches the ask text */
   white-space: nowrap;
 }
-.ask-result.yes { color: #2a8a4a; }
+.ask-result.yes { color: var(--neon-green); text-shadow: 0 0 5px rgba(0,255,65,0.4); }
 
 /* Level 2: a step. */
 .res-step {
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-dark);
   margin: 0 6px;
 }
 .res-step > summary {
@@ -272,14 +708,14 @@ body {
   cursor: pointer;
   padding: 3px 4px;
   font-size: 11px;
-  color: #555;
+  color: var(--text-body);
   user-select: none;
   list-style: none;
 }
 .res-step > summary::-webkit-details-marker { display: none; }
-.res-step > summary::before { content: '▸'; font-size: 8px; color: #bbb; }
+.res-step > summary::before { content: '▸'; font-size: 8px; color: var(--text-dim); }
 .res-step[open] > summary::before { content: '▾'; }
-.res-step > summary:hover { background: #fafafa; }
+.res-step > summary:hover { background: rgba(180,100,0,0.06); }
 .step-count { margin-left: auto; }
 
 /* The two phases get matching left-accent cues in contrasting hues, so the
@@ -287,12 +723,12 @@ body {
      - preprocessing (Input / Pure Symbol / Unit Subsumption): cool blue
      - resolution steps: a warmer green (echoes the panel's "entailed/yes" green) */
 .prep-step > summary {
-  color: #3a6ea5;
-  border-left: 2px solid #cdd9e8;
+  color: var(--neon-teal);
+  border-left: 2px solid #14414a;
 }
 .res-step:not(.prep-step) > summary {
-  color: #2a8a4a;
-  border-left: 2px solid #c3e0cd;
+  color: var(--neon-green);
+  border-left: 2px solid #164a24;
 }
 
 /* Level 3: the resolvent proof lines. */
@@ -303,17 +739,41 @@ body {
   gap: 2px;
 }
 .res-line {
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.35;
+  color: var(--text-body);
   word-break: break-word;
 }
 .res-input.empty {
   font-weight: 700;
-  color: #c00;
+  color: var(--blood-bright);
+  text-shadow: 0 0 6px rgba(204,34,0,0.5);
 }
 
 /* ---- controls ---- */
+
+/* Shared button skin (dungeon "action button"): dark slab, glowing border,
+   gold-dim label that brightens with a gold glow on hover. Applies to the
+   movement/shoot pads, grab/climb, and the mode/run-step bar. */
+.controls button,
+.mode-bar button {
+  font-family: var(--font-label);
+  letter-spacing: 1px;
+  color: var(--gold-dim);
+  background: #0a0a14;
+  border: 1px solid var(--border-glow);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.controls button:hover,
+.mode-bar button:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: rgba(180,100,0,0.10);
+  text-shadow: 0 0 6px var(--gold);
+  box-shadow: 0 0 8px rgba(180,100,0,0.2);
+}
 
 /* The control panel stacks its heading over the controls; make it a flex column
    so .controls fills the space left AFTER the <h2> instead of the full panel
@@ -365,11 +825,13 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
-/* The selected mode is highlighted (matches the ask-panel active accent). */
-.mode-btn.active {
-  background: #3a6ea5;
-  color: #fff;
-  border-color: #345f8c;
+/* The selected mode is highlighted in gold (matches the ask-panel active atom). */
+.mode-btn.active,
+.mode-btn.active:hover {
+  background: rgba(180,100,0,0.22);
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  text-shadow: 0 0 8px var(--gold);
 }
 
 /* Left half: movement pad. A square 3x3 grid: aspect-ratio:1 keeps the whole
@@ -396,11 +858,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-label);
   font-size: 12px;
-  font-weight: 600;
-  color: #888;
+  font-weight: 700;
+  color: var(--gold-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 2px;
   user-select: none;
 }
 
@@ -427,10 +890,19 @@ body {
   grid-template-rows: repeat(3, 1fr);
   gap: 3px;
 }
+/* Shooting is the "danger" action — blood-red label, red hover glow (overrides
+   the shared gold hover). */
 .shoot-pad button {
   font-size: 10px;
   padding: 2px 0;
-  color: #a40;
+  color: var(--blood-bright);
+}
+.shoot-pad button:hover {
+  color: var(--blood-bright);
+  border-color: var(--blood-bright);
+  background: rgba(140,0,0,0.12);
+  text-shadow: 0 0 6px var(--blood-bright);
+  box-shadow: 0 0 8px rgba(140,0,0,0.25);
 }
 /* Two equal-width slots (each a .action-slot at flex:1) hold the buttons; the
    button fills 75% of its slot, centered by auto side-margins. Narrowing lives
@@ -475,6 +947,7 @@ body {
 
 /* Read-only query display, in logical notation, at double the panel-title size
    (title is 14px -> 28px). Looks like a text field but isn't editable. */
+/* Terminal-style query readout: dark slab, mono glyphs in glowing neon green. */
 .ask-field {
   flex: 1;
   min-width: 0;
@@ -482,29 +955,48 @@ body {
   display: flex;
   align-items: center;
   padding: 0 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fafafa;
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  border: 1px solid var(--border-glow);
+  background: #04040a;
+  font-family: var(--font-mono);
   font-size: 22px;
-  color: #222;
+  color: var(--neon-green);
+  text-shadow: 0 0 6px rgba(0,255,65,0.35);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 /* Query still being built (not yet submittable): red text as a cue. */
 .ask-field.incomplete {
-  color: #c0392b;
+  color: var(--blood-bright);
+  text-shadow: 0 0 6px rgba(204,34,0,0.35);
 }
 
 .ask-btns {
   display: flex;
   gap: 6px;
 }
+/* Ask controls share the dungeon action-button skin. */
+.ask-btns button,
+.ask-atom {
+  font-family: var(--font-label);
+  letter-spacing: 1px;
+  color: var(--gold-dim);
+  background: #0a0a14;
+  border: 1px solid var(--border-glow);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.ask-btns button:hover:not(:disabled),
+.ask-atom:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  background: rgba(180,100,0,0.10);
+  text-shadow: 0 0 6px var(--gold);
+  box-shadow: 0 0 8px rgba(180,100,0,0.2);
+}
 .ask-btns button {
   padding: 4px 12px;
   font-size: 12px;
-  cursor: pointer;
 }
 /* Grayed / inert Submit until the proposition is complete. */
 .ask-btns button:disabled {
@@ -524,16 +1016,33 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
-/* The currently-chosen atom / active negation get a highlighted state. */
-.ask-atom.active {
-  background: #3a6ea5;
-  color: #fff;
-  border-color: #345f8c;
+/* The currently-chosen atom / active negation get a gold highlighted state. */
+.ask-atom.active,
+.ask-atom.active:hover {
+  background: rgba(180,100,0,0.22);
+  color: var(--gold-bright);
+  border-color: var(--gold);
+  text-shadow: 0 0 8px var(--gold);
 }
 /* ¬ toggle: narrower than the atom buttons, monospace to match the field glyph. */
 .ask-neg {
   flex: 0 0 auto;
   min-width: 34px;
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 15px;
 }
+
+/* ---- scrollbars ----
+   Thin, dark, with a glowing-border-colored thumb, so scrolling panels match
+   the dungeon frame (Firefox via scrollbar-*, Chromium via ::-webkit-*). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-glow) #000;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #000; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-glow);
+  border: 1px solid #000;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }

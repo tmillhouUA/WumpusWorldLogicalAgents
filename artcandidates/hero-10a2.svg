@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 10a2: from 10a, two adjustments —
+       (1) the front arm + hanging lantern raised as a unit (~7 up) so the arm
+           meets the body at the SHOULDER (not mid-torso),
+       (2) bow and quiver pulled INWARD behind OPPOSITE shoulders so the torso
+           partially obscures them: bow behind the viewer-LEFT shoulder, quiver
+           behind the viewer-RIGHT shoulder, quiver also moved down. Same
+           orientation as before, just tucked in. -->
+  <title>Hero 10a2 — shoulder-height arm, bow/quiver tucked behind</title>
+
+  <!-- shadow, centered under the feet -->
+  <ellipse cx="50" cy="88" rx="17" ry="3.6" fill="#000" opacity="0.35"/>
+
+  <!-- BACK GEAR (behind body; inner edges will be overlapped by the tunic) -->
+  <!-- bow: diagonal across the back, behind the viewer-LEFT shoulder, pulled in -->
+  <path d="M40 44 Q36 57 46 71" fill="none" stroke="#6b4c26" stroke-width="2.5"/>
+  <line x1="40" y1="44" x2="46" y2="71" stroke="#d8d2c0" stroke-width="0.7"/>
+  <!-- quiver behind the viewer-RIGHT shoulder, pulled in and down, arrows up -->
+  <rect x="56" y="50" width="6" height="17" rx="2" fill="#5a3d1e" transform="rotate(18 59 58)"/>
+  <line x1="62" y1="51" x2="67" y2="43" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="60" y1="50" x2="64" y2="41" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="58" y1="50" x2="61" y2="40" stroke="#8a6a3a" stroke-width="1"/>
+
+  <!-- stubby legs -->
+  <path d="M45 70 L43 84 L49 84 L50 71 Z" fill="#5a4327"/>
+  <path d="M55 70 L57 84 L51 84 L50 71 Z" fill="#4c3820"/>
+  <ellipse cx="45" cy="85.5" rx="4" ry="2.5" fill="#3a2b18"/>
+  <ellipse cx="55" cy="85.5" rx="4" ry="2.5" fill="#312414"/>
+
+  <!-- tunic body (drawn over the inner edges of bow/quiver) -->
+  <path d="M42 56 Q50 53 58 56 L56 71 Q50 74 44 71 Z" fill="#3f7d3a"/>
+  <path d="M44 69 L47 73 L50 69 L53 73 L56 71 Q50 74 44 71 Z" fill="#356b31"/>
+  <rect x="43" y="66" width="14" height="3" fill="#5a3d1e"/>
+
+  <!-- NECK (between head and collar) -->
+  <rect x="46" y="50" width="7" height="7" rx="1.5" fill="#d9a978"/>
+
+  <!-- rear arm -->
+  <path d="M56 58 L60 66 L57 67 L53 60 Z" fill="#c98d5a"/>
+
+  <!-- BIG head + hood -->
+  <circle cx="49" cy="38" r="14" fill="#e0b083"/>
+  <path d="M35 39 Q34 20 49 20 Q64 20 63 37 L58 32 Q49 26 41 33 Z" fill="#3f7d3a"/>
+  <path d="M38 34 Q49 29 60 34 L57 38 Q49 34 41 38 Z" fill="#8a6a3a"/>
+  <circle cx="45" cy="40" r="2" fill="#2a2018"/>
+  <circle cx="54" cy="40" r="2" fill="#2a2018"/>
+  <circle cx="45.6" cy="39.3" r="0.6" fill="#fff"/>
+  <circle cx="54.6" cy="39.3" r="0.6" fill="#fff"/>
+
+  <!-- FRONT arm + lantern, raised ~7 so the arm meets the body at the shoulder -->
+  <!-- arm root at shoulder (~y53), reaching forward and down to the hand -->
+  <path d="M45 53 L31 56 L32 60 L46 58 Z" fill="#c98d5a"/>
+  <!-- hand -->
+  <circle cx="31.5" cy="58" r="2.4" fill="#d9a978"/>
+
+  <!-- LANTERN, hanging BELOW the hand -->
+  <line x1="31.5" y1="59.5" x2="31.5" y2="63" stroke="#3a2b18" stroke-width="0.8"/>
+  <path d="M27.5 64 Q31.5 59 35.5 64" fill="none" stroke="#5a3d1e" stroke-width="1"/>
+  <rect x="27" y="64" width="9" height="11" rx="1" fill="#5a3d1e"/>
+  <rect x="28.5" y="65.5" width="6" height="8" fill="#ffcf6b"/>
+  <ellipse cx="31.5" cy="69.5" rx="2.2" ry="3" fill="#fff2b0"/>
+  <!-- glow -->
+  <circle cx="31.5" cy="69.5" r="13" fill="#ffcf6b" opacity="0.15"/>
+  <circle cx="31.5" cy="69.5" r="7" fill="#ffcf6b" opacity="0.15"/>
+</svg>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- STENCH glyph — rising wisps that WAFT UPWARD. Each wisp is its OWN nested
+       <svg> (its own coordinate space + viewport, overflow:hidden clips it to
+       its window). Inside, a tall vertical sine wave scrolls up by exactly one
+       wavelength on a loop — seamless, since a sine is identical after a
+       one-wavelength shift, and the wave extends well past the window so it's
+       always full. Nested svgs keep each wisp fully isolated. -->
+  <title>Stench — wafting wisps</title>
+  <!-- opacity 0.5 to match the wumpus stench in-figure -->
+  <g opacity="0.5">
+  <svg x="22.0" y="34" width="12.0" height="48" viewBox="0 0 12.0 48" overflow="hidden">
+    <path d="M2.9 62.0 L2.1 61.0 L2.1 60.0 L2.9 59.0 L4.3 58.0 L6.0 57.0 L7.7 56.0 L9.1 55.0 L9.9 54.0 L9.9 53.0 L9.1 52.0 L7.7 51.0 L6.0 50.0 L4.3 49.0 L2.9 48.0 L2.1 47.0 L2.1 46.0 L2.9 45.0 L4.3 44.0 L6.0 43.0 L7.7 42.0 L9.1 41.0 L9.9 40.0 L9.9 39.0 L9.1 38.0 L7.7 37.0 L6.0 36.0 L4.3 35.0 L2.9 34.0 L2.1 33.0 L2.1 32.0 L2.9 31.0 L4.3 30.0 L6.0 29.0 L7.7 28.0 L9.1 27.0 L9.9 26.0 L9.9 25.0 L9.1 24.0 L7.7 23.0 L6.0 22.0 L4.3 21.0 L2.9 20.0 L2.1 19.0 L2.1 18.0 L2.9 17.0 L4.3 16.0 L6.0 15.0 L7.7 14.0 L9.1 13.0 L9.9 12.0 L9.9 11.0 L9.1 10.0 L7.7 9.0 L6.0 8.0 L4.3 7.0 L2.9 6.0 L2.1 5.0 L2.1 4.0 L2.9 3.0 L4.3 2.0 L6.0 1.0 L7.7 0.0 L9.1 -1.0 L9.9 -2.0 L9.9 -3.0 L9.1 -4.0 L7.7 -5.0 L6.0 -6.0 L4.3 -7.0 L2.9 -8.0 L2.1 -9.0 L2.1 -10.0 L2.9 -11.0 L4.3 -12.0 L6.0 -13.0 L7.7 -14.0" fill="none" stroke="#8a9a5a" stroke-width="2.4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" dur="3.2s" repeatCount="indefinite" begin="0s" from="0 0" to="0 -14"/>
+    </path>
+  </svg>
+  <svg x="33.0" y="28" width="12.0" height="50" viewBox="0 0 12.0 50" overflow="hidden">
+    <path d="M4.3 64.0 L6.0 63.0 L7.7 62.0 L9.1 61.0 L9.9 60.0 L9.9 59.0 L9.1 58.0 L7.7 57.0 L6.0 56.0 L4.3 55.0 L2.9 54.0 L2.1 53.0 L2.1 52.0 L2.9 51.0 L4.3 50.0 L6.0 49.0 L7.7 48.0 L9.1 47.0 L9.9 46.0 L9.9 45.0 L9.1 44.0 L7.7 43.0 L6.0 42.0 L4.3 41.0 L2.9 40.0 L2.1 39.0 L2.1 38.0 L2.9 37.0 L4.3 36.0 L6.0 35.0 L7.7 34.0 L9.1 33.0 L9.9 32.0 L9.9 31.0 L9.1 30.0 L7.7 29.0 L6.0 28.0 L4.3 27.0 L2.9 26.0 L2.1 25.0 L2.1 24.0 L2.9 23.0 L4.3 22.0 L6.0 21.0 L7.7 20.0 L9.1 19.0 L9.9 18.0 L9.9 17.0 L9.1 16.0 L7.7 15.0 L6.0 14.0 L4.3 13.0 L2.9 12.0 L2.1 11.0 L2.1 10.0 L2.9 9.0 L4.3 8.0 L6.0 7.0 L7.7 6.0 L9.1 5.0 L9.9 4.0 L9.9 3.0 L9.1 2.0 L7.7 1.0 L6.0 0.0 L4.3 -1.0 L2.9 -2.0 L2.1 -3.0 L2.1 -4.0 L2.9 -5.0 L4.3 -6.0 L6.0 -7.0 L7.7 -8.0 L9.1 -9.0 L9.9 -10.0 L9.9 -11.0 L9.1 -12.0 L7.7 -13.0 L6.0 -14.0" fill="none" stroke="#8a9a5a" stroke-width="2.4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" dur="3.6s" repeatCount="indefinite" begin="-0.7s" from="0 0" to="0 -14"/>
+    </path>
+  </svg>
+  <svg x="44.0" y="24" width="12.0" height="50" viewBox="0 0 12.0 50" overflow="hidden">
+    <path d="M9.9 64.0 L9.9 63.0 L9.1 62.0 L7.7 61.0 L6.0 60.0 L4.3 59.0 L2.9 58.0 L2.1 57.0 L2.1 56.0 L2.9 55.0 L4.3 54.0 L6.0 53.0 L7.7 52.0 L9.1 51.0 L9.9 50.0 L9.9 49.0 L9.1 48.0 L7.7 47.0 L6.0 46.0 L4.3 45.0 L2.9 44.0 L2.1 43.0 L2.1 42.0 L2.9 41.0 L4.3 40.0 L6.0 39.0 L7.7 38.0 L9.1 37.0 L9.9 36.0 L9.9 35.0 L9.1 34.0 L7.7 33.0 L6.0 32.0 L4.3 31.0 L2.9 30.0 L2.1 29.0 L2.1 28.0 L2.9 27.0 L4.3 26.0 L6.0 25.0 L7.7 24.0 L9.1 23.0 L9.9 22.0 L9.9 21.0 L9.1 20.0 L7.7 19.0 L6.0 18.0 L4.3 17.0 L2.9 16.0 L2.1 15.0 L2.1 14.0 L2.9 13.0 L4.3 12.0 L6.0 11.0 L7.7 10.0 L9.1 9.0 L9.9 8.0 L9.9 7.0 L9.1 6.0 L7.7 5.0 L6.0 4.0 L4.3 3.0 L2.9 2.0 L2.1 1.0 L2.1 0.0 L2.9 -1.0 L4.3 -2.0 L6.0 -3.0 L7.7 -4.0 L9.1 -5.0 L9.9 -6.0 L9.9 -7.0 L9.1 -8.0 L7.7 -9.0 L6.0 -10.0 L4.3 -11.0 L2.9 -12.0 L2.1 -13.0 L2.1 -14.0" fill="none" stroke="#8a9a5a" stroke-width="2.4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" dur="2.9s" repeatCount="indefinite" begin="-1.4s" from="0 0" to="0 -14"/>
+    </path>
+  </svg>
+  <svg x="55.0" y="28" width="12.0" height="50" viewBox="0 0 12.0 50" overflow="hidden">
+    <path d="M4.3 64.0 L6.0 63.0 L7.7 62.0 L9.1 61.0 L9.9 60.0 L9.9 59.0 L9.1 58.0 L7.7 57.0 L6.0 56.0 L4.3 55.0 L2.9 54.0 L2.1 53.0 L2.1 52.0 L2.9 51.0 L4.3 50.0 L6.0 49.0 L7.7 48.0 L9.1 47.0 L9.9 46.0 L9.9 45.0 L9.1 44.0 L7.7 43.0 L6.0 42.0 L4.3 41.0 L2.9 40.0 L2.1 39.0 L2.1 38.0 L2.9 37.0 L4.3 36.0 L6.0 35.0 L7.7 34.0 L9.1 33.0 L9.9 32.0 L9.9 31.0 L9.1 30.0 L7.7 29.0 L6.0 28.0 L4.3 27.0 L2.9 26.0 L2.1 25.0 L2.1 24.0 L2.9 23.0 L4.3 22.0 L6.0 21.0 L7.7 20.0 L9.1 19.0 L9.9 18.0 L9.9 17.0 L9.1 16.0 L7.7 15.0 L6.0 14.0 L4.3 13.0 L2.9 12.0 L2.1 11.0 L2.1 10.0 L2.9 9.0 L4.3 8.0 L6.0 7.0 L7.7 6.0 L9.1 5.0 L9.9 4.0 L9.9 3.0 L9.1 2.0 L7.7 1.0 L6.0 0.0 L4.3 -1.0 L2.9 -2.0 L2.1 -3.0 L2.1 -4.0 L2.9 -5.0 L4.3 -6.0 L6.0 -7.0 L7.7 -8.0 L9.1 -9.0 L9.9 -10.0 L9.9 -11.0 L9.1 -12.0 L7.7 -13.0 L6.0 -14.0" fill="none" stroke="#8a9a5a" stroke-width="2.4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" dur="3.4s" repeatCount="indefinite" begin="-2.1s" from="0 0" to="0 -14"/>
+    </path>
+  </svg>
+  <svg x="66.0" y="34" width="12.0" height="48" viewBox="0 0 12.0 48" overflow="hidden">
+    <path d="M2.9 62.0 L2.1 61.0 L2.1 60.0 L2.9 59.0 L4.3 58.0 L6.0 57.0 L7.7 56.0 L9.1 55.0 L9.9 54.0 L9.9 53.0 L9.1 52.0 L7.7 51.0 L6.0 50.0 L4.3 49.0 L2.9 48.0 L2.1 47.0 L2.1 46.0 L2.9 45.0 L4.3 44.0 L6.0 43.0 L7.7 42.0 L9.1 41.0 L9.9 40.0 L9.9 39.0 L9.1 38.0 L7.7 37.0 L6.0 36.0 L4.3 35.0 L2.9 34.0 L2.1 33.0 L2.1 32.0 L2.9 31.0 L4.3 30.0 L6.0 29.0 L7.7 28.0 L9.1 27.0 L9.9 26.0 L9.9 25.0 L9.1 24.0 L7.7 23.0 L6.0 22.0 L4.3 21.0 L2.9 20.0 L2.1 19.0 L2.1 18.0 L2.9 17.0 L4.3 16.0 L6.0 15.0 L7.7 14.0 L9.1 13.0 L9.9 12.0 L9.9 11.0 L9.1 10.0 L7.7 9.0 L6.0 8.0 L4.3 7.0 L2.9 6.0 L2.1 5.0 L2.1 4.0 L2.9 3.0 L4.3 2.0 L6.0 1.0 L7.7 0.0 L9.1 -1.0 L9.9 -2.0 L9.9 -3.0 L9.1 -4.0 L7.7 -5.0 L6.0 -6.0 L4.3 -7.0 L2.9 -8.0 L2.1 -9.0 L2.1 -10.0 L2.9 -11.0 L4.3 -12.0 L6.0 -13.0 L7.7 -14.0" fill="none" stroke="#8a9a5a" stroke-width="2.4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="translate" dur="3.1s" repeatCount="indefinite" begin="-2.8s" from="0 0" to="0 -14"/>
+    </path>
+  </svg>
+  </g>
+</svg>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 04: Peasant archer at full draw — the signature Wumpus-world action
+       (loose an arrow down a corridor). Green tunic, leather bracer, quiver
+       on the back. Bow drawn to the cheek. -->
+  <title>Hero 04 — archer at full draw</title>
+  <ellipse cx="50" cy="93" rx="20" ry="4" fill="#000" opacity="0.35"/>
+  <!-- legs, braced stance -->
+  <path d="M40 66 L34 88 L41 88 L46 68 Z" fill="#5a4327"/>
+  <path d="M56 66 L64 86 L58 88 L52 68 Z" fill="#4c3820"/>
+  <path d="M33 86 L42 86 L42 91 L31 91 Z" fill="#3a2b18"/>
+  <path d="M65 84 L57 86 L58 90 L67 88 Z" fill="#312414"/>
+  <!-- quiver behind back -->
+  <rect x="58" y="40" width="6" height="20" rx="2" fill="#5a3d1e" transform="rotate(12 61 50)"/>
+  <line x1="63" y1="40" x2="66" y2="33" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="61" y1="40" x2="63" y2="32" stroke="#8a6a3a" stroke-width="1"/>
+  <!-- tunic -->
+  <path d="M38 45 Q50 41 62 45 L60 68 Q50 72 40 68 Z" fill="#3f7d3a"/>
+  <path d="M40 66 L45 73 L50 66 L55 73 L60 68 Q50 72 40 68 Z" fill="#356b31"/>
+  <rect x="39" y="60" width="22" height="4" fill="#5a3d1e"/>
+  <!-- head, turned to aim -->
+  <circle cx="50" cy="33" r="9" fill="#e0b083"/>
+  <path d="M41 33 Q42 21 51 21 Q60 21 60 32 L56 29 Q50 25 44 30 Z" fill="#8a6a3a"/>
+  <circle cx="53" cy="33" r="1.2" fill="#2a2018"/>
+  <!-- lead arm extended forward (holds bow) -->
+  <path d="M40 48 L20 52 L20 55 L41 52 Z" fill="#c98d5a"/>
+  <!-- bracer -->
+  <rect x="22" y="51" width="6" height="5" fill="#5a3d1e"/>
+  <!-- draw arm pulled back -->
+  <path d="M60 48 L70 50 L69 53 L59 52 Z" fill="#c98d5a"/>
+  <!-- bow (vertical, in front) -->
+  <path d="M18 40 Q10 53 18 66" fill="none" stroke="#6b4c26" stroke-width="2.5"/>
+  <!-- string, drawn back to hand -->
+  <path d="M18 40 L70 51 L18 66" fill="none" stroke="#d8d2c0" stroke-width="0.8"/>
+  <!-- nocked arrow -->
+  <line x1="18" y1="53" x2="70" y2="51.5" stroke="#8a6a3a" stroke-width="1"/>
+  <polygon points="12,53.2 18,51.5 18,54.8" fill="#c6ced4"/>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 10: a wildcard — keeps the gumdrop body, arms, feet, fangs, but tries a
+       single large central eye with a heavy unibrow. Distinctive silhouette
+       while staying in the family. (Two-eye orthodoxy is 01-09; this is the
+       "what if" option.) -->
+  <title>Wumpus 10 — cyclops variant</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>
+  <ellipse cx="38" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+  <ellipse cx="62" cy="86" rx="11" ry="4.5" fill="#4a5730"/>
+
+  <path d="M22 50 Q12 46 8 50 Q12 54 22 54 Z" fill="#5a6b3a"/>
+  <path d="M78 50 Q88 46 92 50 Q88 54 78 54 Z" fill="#5a6b3a"/>
+
+  <path d="M22 78 Q18 20 50 18 Q82 20 78 78 Z" fill="#5a6b3a"/>
+  <path d="M28 76 Q26 30 50 28 Q74 30 72 76 Z" fill="#66783f"/>
+
+  <!-- heavy unibrow -->
+  <path d="M36 39 Q50 34 64 39" fill="none" stroke="#2a331a" stroke-width="3.4" stroke-linecap="round"/>
+
+  <!-- single central eye -->
+  <ellipse cx="50" cy="50" rx="10" ry="11" fill="#f4ecd0"/>
+  <circle cx="50" cy="51" r="5" fill="#c9a84c"/>
+  <circle cx="50" cy="51" r="2.3" fill="#1a1408"/>
+  <circle cx="52" cy="49" r="1.1" fill="#fff"/>
+
+  <!-- mouth with fangs, lower -->
+  <path d="M38 66 Q50 72 62 66 Q50 69 38 66 Z" fill="#2a1818"/>
+  <polygon points="42,66.5 46,66.5 44,72" fill="#f4ecd0"/>
+  <polygon points="54,66.5 58,66.5 56,72" fill="#f4ecd0"/>
+</svg>

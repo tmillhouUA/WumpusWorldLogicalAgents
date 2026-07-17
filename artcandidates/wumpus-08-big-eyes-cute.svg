@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 08: cuter, book-friendly read — oversized eyes, soft raised brows, small
+       fangs peeking from a closed smile. Least scary; most "lovable monster". -->
+  <title>Wumpus 08 — big-eyed friendly</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>
+  <ellipse cx="37" cy="86" rx="12" ry="4.5" fill="#4a5730"/>
+  <ellipse cx="63" cy="86" rx="12" ry="4.5" fill="#4a5730"/>
+
+  <path d="M22 51 Q11 49 7 53 Q12 56 22 54 Z" fill="#5a6b3a"/>
+  <path d="M78 51 Q89 49 93 53 Q88 56 78 54 Z" fill="#5a6b3a"/>
+
+  <path d="M22 78 Q18 20 50 18 Q82 20 78 78 Z" fill="#5a6b3a"/>
+  <path d="M28 76 Q26 30 50 28 Q74 30 72 76 Z" fill="#66783f"/>
+
+  <!-- soft raised brows -->
+  <path d="M32 40 Q39 37 45 40" fill="none" stroke="#2f3a1c" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M55 40 Q61 37 68 40" fill="none" stroke="#2f3a1c" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- big eyes with highlights -->
+  <ellipse cx="39" cy="50" rx="8.5" ry="9.5" fill="#f4ecd0"/>
+  <ellipse cx="61" cy="50" rx="8.5" ry="9.5" fill="#f4ecd0"/>
+  <circle cx="40" cy="51" r="4.4" fill="#c9a84c"/>
+  <circle cx="60" cy="51" r="4.4" fill="#c9a84c"/>
+  <circle cx="40" cy="51" r="2" fill="#1a1408"/>
+  <circle cx="60" cy="51" r="2" fill="#1a1408"/>
+  <circle cx="41.6" cy="49.4" r="1" fill="#fff"/>
+  <circle cx="61.6" cy="49.4" r="1" fill="#fff"/>
+
+  <!-- gentle closed smile with tiny fangs -->
+  <path d="M40 64 Q50 70 60 64" fill="none" stroke="#2a1818" stroke-width="1.8" stroke-linecap="round"/>
+  <polygon points="44,64.5 47,64.5 45.5,67.5" fill="#f4ecd0"/>
+  <polygon points="53,64.5 56,64.5 54.5,67.5" fill="#f4ecd0"/>
+</svg>

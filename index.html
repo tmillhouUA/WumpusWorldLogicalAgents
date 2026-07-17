@@ -3,10 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wumpus World — Logical Agents</title>
+  <title>Dungeon of the Wumpus</title>
+
+  <!-- TODO (self-host fonts): these three faces are pulled from Google Fonts
+       for now so we can iterate on the look. Once the design is settled, swap
+       to local .woff2 files (offline/portable, and avoids the font "pop-in"
+       flash Google Fonts causes). All three are SIL OFL, so bundling is fine.
+         UnifrakturMaguntia -> blackletter title
+         Cinzel             -> panel/section titles + labels
+         Share Tech Mono    -> body text, KB formulas, resolution lines -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Share+Tech+Mono&family=UnifrakturMaguntia&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Title bar: blackletter title + tagline, flanked by rune pseudo-elements
+       (see #site-header in style.css). Decorative only. -->
+  <header id="site-header">
+    <h1 class="site-title">Dungeon of the Wumpus</h1>
+    <p class="site-subtitle">Defeat the Wumpus and Steal His Golden Hoard</p>
+  </header>
+
   <!--
     Five panels, per the planned layout:
       - #kb-panel      : left-upper, the agent's knowledge base

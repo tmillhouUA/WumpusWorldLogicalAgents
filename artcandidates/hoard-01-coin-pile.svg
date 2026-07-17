@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 01: a heaped mound of gold coins with a few spilling forward. Shiny
+       light rays fan up from the pile. The classic "pile of treasure". -->
+  <title>Hoard 01 — coin pile</title>
+
+  <!-- shiny light rays behind the pile -->
+  <g stroke="#ffe9a0" stroke-linecap="round" opacity="0.55">
+    <line x1="50" y1="52" x2="50" y2="10" stroke-width="2.4"/>
+    <line x1="50" y1="52" x2="30" y2="18" stroke-width="1.6"/>
+    <line x1="50" y1="52" x2="70" y2="18" stroke-width="1.6"/>
+    <line x1="50" y1="52" x2="18" y2="34" stroke-width="1.3"/>
+    <line x1="50" y1="52" x2="82" y2="34" stroke-width="1.3"/>
+    <line x1="50" y1="52" x2="24" y2="52" stroke-width="1"/>
+    <line x1="50" y1="52" x2="76" y2="52" stroke-width="1"/>
+  </g>
+  <!-- soft glow -->
+  <circle cx="50" cy="58" r="30" fill="#f0c040" opacity="0.12"/>
+
+  <!-- shadow -->
+  <ellipse cx="50" cy="86" rx="34" ry="6" fill="#000" opacity="0.3"/>
+
+  <!-- coin mound (stacked ellipses, dark to light) -->
+  <path d="M18 78 Q50 62 82 78 Q50 90 18 78 Z" fill="#a8822e"/>
+  <path d="M24 72 Q50 58 76 72 Q50 82 24 72 Z" fill="#c9a84c"/>
+  <path d="M32 66 Q50 55 68 66 Q50 74 32 66 Z" fill="#e0b83e"/>
+  <ellipse cx="50" cy="62" rx="12" ry="5" fill="#f0c040"/>
+
+  <!-- individual coins with rims -->
+  <g fill="#f0c040" stroke="#a8822e" stroke-width="0.8">
+    <ellipse cx="30" cy="79" rx="6" ry="3"/>
+    <ellipse cx="44" cy="82" rx="6" ry="3"/>
+    <ellipse cx="60" cy="81" rx="6" ry="3"/>
+    <ellipse cx="72" cy="78" rx="6" ry="3"/>
+    <ellipse cx="50" cy="60" rx="5.5" ry="2.6"/>
+  </g>
+  <!-- coin sparkles -->
+  <g fill="#fff6d8">
+    <circle cx="48" cy="59" r="1"/>
+    <circle cx="58" cy="80" r="0.9"/>
+    <circle cx="31" cy="78" r="0.9"/>
+  </g>
+</svg>

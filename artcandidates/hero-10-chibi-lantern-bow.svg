@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 10: Chibi / big-head token variant of the delver — reads clearly at
+       small cell size. Bow + quiver on back, lantern held forward, slight
+       forward lean. Cutest / most game-token of the set. -->
+  <title>Hero 10 — chibi delver, lantern + bow</title>
+  <ellipse cx="50" cy="92" rx="18" ry="4" fill="#000" opacity="0.35"/>
+
+  <!-- back gear -->
+  <path d="M62 44 Q71 56 61 70" fill="none" stroke="#6b4c26" stroke-width="2.5"/>
+  <line x1="62" y1="44" x2="61" y2="70" stroke="#d8d2c0" stroke-width="0.7"/>
+  <rect x="58" y="46" width="6" height="16" rx="2" fill="#5a3d1e" transform="rotate(14 61 54)"/>
+  <line x1="64" y1="46" x2="68" y2="39" stroke="#8a6a3a" stroke-width="1"/>
+  <line x1="62" y1="45" x2="65" y2="38" stroke="#8a6a3a" stroke-width="1"/>
+
+  <!-- stubby legs -->
+  <path d="M45 70 L43 84 L49 84 L50 71 Z" fill="#5a4327"/>
+  <path d="M55 70 L57 84 L51 84 L50 71 Z" fill="#4c3820"/>
+  <ellipse cx="45" cy="85" rx="4" ry="2.5" fill="#3a2b18"/>
+  <ellipse cx="55" cy="85" rx="4" ry="2.5" fill="#312414"/>
+
+  <!-- little tunic body -->
+  <path d="M42 56 Q50 53 58 56 L56 71 Q50 74 44 71 Z" fill="#3f7d3a"/>
+  <path d="M44 69 L47 73 L50 69 L53 73 L56 71 Q50 74 44 71 Z" fill="#356b31"/>
+  <rect x="43" y="66" width="14" height="3" fill="#5a3d1e"/>
+
+  <!-- rear arm -->
+  <path d="M56 58 L60 66 L57 67 L53 60 Z" fill="#c98d5a"/>
+
+  <!-- BIG head + hood -->
+  <circle cx="47" cy="38" r="14" fill="#e0b083"/>
+  <path d="M33 39 Q32 20 47 20 Q62 20 61 37 L56 32 Q47 26 39 33 Z" fill="#3f7d3a"/>
+  <path d="M36 34 Q47 29 58 34 L55 38 Q47 34 39 38 Z" fill="#8a6a3a"/>
+  <!-- big friendly eyes -->
+  <circle cx="43" cy="40" r="2" fill="#2a2018"/>
+  <circle cx="52" cy="40" r="2" fill="#2a2018"/>
+  <circle cx="43.6" cy="39.3" r="0.6" fill="#fff"/>
+  <circle cx="52.6" cy="39.3" r="0.6" fill="#fff"/>
+
+  <!-- front arm + lantern -->
+  <path d="M44 60 L30 64 L31 68 L45 65 Z" fill="#c98d5a"/>
+  <rect x="26" y="61" width="8" height="10" rx="1" fill="#5a3d1e"/>
+  <rect x="27.5" y="62.5" width="5" height="7" fill="#ffcf6b"/>
+  <ellipse cx="30" cy="66" rx="2" ry="2.6" fill="#fff2b0"/>
+  <circle cx="30" cy="66" r="12" fill="#ffcf6b" opacity="0.15"/>
+</svg>

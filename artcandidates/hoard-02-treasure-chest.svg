@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 02: an open treasure chest brimming with gold, lid up, coins and a gem
+       spilling over the front edge. Rays burst from the open lid. -->
+  <title>Hoard 02 — open treasure chest</title>
+
+  <g stroke="#ffe9a0" stroke-linecap="round" opacity="0.5">
+    <line x1="50" y1="46" x2="50" y2="8" stroke-width="2.2"/>
+    <line x1="50" y1="46" x2="34" y2="14" stroke-width="1.5"/>
+    <line x1="50" y1="46" x2="66" y2="14" stroke-width="1.5"/>
+    <line x1="50" y1="46" x2="22" y2="28" stroke-width="1.2"/>
+    <line x1="50" y1="46" x2="78" y2="28" stroke-width="1.2"/>
+  </g>
+  <circle cx="50" cy="52" r="26" fill="#f0c040" opacity="0.12"/>
+
+  <ellipse cx="50" cy="88" rx="32" ry="5" fill="#000" opacity="0.3"/>
+
+  <!-- open lid (behind) -->
+  <path d="M26 44 Q50 30 74 44 L74 40 Q50 26 26 40 Z" fill="#6b4c26"/>
+  <path d="M26 40 Q50 26 74 40 L74 44 Q50 34 26 44 Z" fill="#835e30"/>
+  <!-- lid bands -->
+  <path d="M40 33 Q50 30 40 45" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+  <path d="M60 33 Q50 30 60 45" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+
+  <!-- gold inside, mounding over the rim -->
+  <path d="M28 58 Q50 44 72 58 Q50 66 28 58 Z" fill="#e0b83e"/>
+  <ellipse cx="50" cy="55" rx="14" ry="5" fill="#f0c040"/>
+
+  <!-- chest body -->
+  <rect x="26" y="58" width="48" height="26" rx="2" fill="#6b4c26"/>
+  <rect x="26" y="58" width="48" height="26" rx="2" fill="none" stroke="#4a3218" stroke-width="1.5"/>
+  <rect x="26" y="66" width="48" height="4" fill="#c9a84c"/>
+  <!-- lock -->
+  <rect x="46" y="68" width="8" height="8" rx="1" fill="#c9a84c" stroke="#a8822e" stroke-width="0.8"/>
+  <circle cx="50" cy="72" r="1.4" fill="#4a3218"/>
+
+  <!-- spilling coins + a gem -->
+  <g fill="#f0c040" stroke="#a8822e" stroke-width="0.8">
+    <ellipse cx="34" cy="84" rx="5" ry="2.6"/>
+    <ellipse cx="66" cy="84" rx="5" ry="2.6"/>
+    <ellipse cx="50" cy="52" rx="5" ry="2.4"/>
+  </g>
+  <polygon points="60,53 64,56 62,61 58,61 56,56" fill="#3a9ad0" stroke="#2a6a9a" stroke-width="0.6"/>
+  <g fill="#fff6d8"><circle cx="49" cy="51" r="1"/><circle cx="61" cy="55" r="0.8"/></g>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 03: goofy / dopey. Raised curious brows, big goofy underbite grin with
+       two up-pointing tusks, slightly cross-eyed. Friendly-monster read. -->
+  <title>Wumpus 03 — goofy underbite</title>
+  <ellipse cx="50" cy="93" rx="24" ry="4" fill="#000" opacity="0.35"/>
+
+  <rect x="40" y="76" width="5" height="6" fill="#3f4a29"/>
+  <rect x="55" y="76" width="5" height="6" fill="#3f4a29"/>
+  <ellipse cx="37" cy="86" rx="12" ry="4.5" fill="#4a5730"/>
+  <ellipse cx="63" cy="86" rx="12" ry="4.5" fill="#4a5730"/>
+
+  <!-- arms hanging loose, out to the sides -->
+  <path d="M22 51 Q11 51 7 55 Q12 57 22 55 Z" fill="#5a6b3a"/>
+  <path d="M78 51 Q89 51 93 55 Q88 57 78 55 Z" fill="#5a6b3a"/>
+
+  <path d="M22 78 Q18 20 50 18 Q82 20 78 78 Z" fill="#5a6b3a"/>
+  <path d="M28 76 Q26 30 50 28 Q74 30 72 76 Z" fill="#66783f"/>
+
+  <!-- raised, curious brows -->
+  <path d="M33 39 Q39 36 45 39" fill="none" stroke="#2f3a1c" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M55 39 Q61 36 67 39" fill="none" stroke="#2f3a1c" stroke-width="2.4" stroke-linecap="round"/>
+
+  <ellipse cx="40" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <ellipse cx="60" cy="49" rx="7" ry="8" fill="#f4ecd0"/>
+  <!-- slightly cross-eyed -->
+  <circle cx="43" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="57" cy="50" r="3.4" fill="#c9a84c"/>
+  <circle cx="44" cy="50" r="1.5" fill="#1a1408"/>
+  <circle cx="56" cy="50" r="1.5" fill="#1a1408"/>
+
+  <!-- big open goofy grin -->
+  <path d="M36 60 Q50 74 64 60 Q50 66 36 60 Z" fill="#2a1818"/>
+  <!-- up-pointing tusks (underbite) -->
+  <polygon points="42,66 46,66 44,59" fill="#f4ecd0"/>
+  <polygon points="54,66 58,66 56,59" fill="#f4ecd0"/>
+</svg>

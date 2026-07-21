@@ -152,15 +152,66 @@ body {
   letter-spacing: 6px;
   text-transform: uppercase;
   color: var(--blood-bright);
-  animation: flicker 4s infinite;
+  /* Mostly still, like a candle holding steady — a brief flicker burst at
+     hard-coded, IRREGULAR intervals (3s, 1s, 2s, 2s, 3s, 1s, 2s between
+     bursts, summing to one 14s cycle that then repeats) rather than one
+     evenly-spaced flicker — reads as less mechanical/predictable. Each
+     burst is the same short jitter (~0.3s of real time -> ~2% of 14s),
+     placed at the cumulative start time of each interval: 0s, 3s, 4s, 6s,
+     8s, 11s, 12s. */
+  animation: flicker-burst 14s ease-in-out infinite;
 }
-/* Occasional dim flicker, like failing torchlight. */
-@keyframes flicker {
-  0%, 95%, 100% { opacity: 1; }
-  96% { opacity: 0.6; }
-  97% { opacity: 1; }
-  98% { opacity: 0.4; }
-  99% { opacity: 0.9; }
+@keyframes flicker-burst {
+  0%, 21.4%, 28.6%, 42.9%, 57.1%, 78.6%, 85.7%, 100% { opacity: 1; text-shadow: 0 0 4px var(--blood-bright); }
+
+  /* burst @ 0s */
+  0.3%  { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  0.5%  { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  0.7%  { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  0.9%  { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  1.1%  { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 3s (21.4%) */
+  21.7% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  21.9% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  22.1% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  22.3% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  22.5% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 4s (28.6%) */
+  28.9% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  29.1% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  29.3% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  29.5% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  29.7% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 6s (42.9%) */
+  43.2% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  43.4% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  43.6% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  43.8% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  44.0% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 8s (57.1%) */
+  57.4% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  57.6% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  57.8% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  58.0% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  58.2% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 11s (78.6%) */
+  78.9% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  79.1% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  79.3% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  79.5% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  79.7% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
+
+  /* burst @ 12s (85.7%) */
+  86.0% { opacity: 1;    text-shadow: 0 0 8px var(--blood-bright); }
+  86.2% { opacity: 0.9;  text-shadow: 0 0 3px var(--blood); }
+  86.4% { opacity: 0.97; text-shadow: 0 0 7px var(--blood-bright); }
+  86.6% { opacity: 0.8;  text-shadow: 0 0 4px var(--blood-bright); }
+  86.8% { opacity: 0.95; text-shadow: 0 0 6px var(--blood-bright); }
 }
 
 #app {

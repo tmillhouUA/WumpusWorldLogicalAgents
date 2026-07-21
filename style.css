@@ -39,14 +39,18 @@
      Two tiling SVG data-URIs for the game board (Step 2). Both are drawn in the
      same dark stone family so wall and floor read as one dungeon.
 
-     FLOOR — one ROOM = FOUR flagstone slabs in the ORIGINAL tile style, one per
-     quadrant (viewBox 100x100; each slab 50x50). Each slab keeps the original
-     look: base fill #1a1712, mottle blobs #211d16, and the double-stroke slab
-     seam (dark #0d0b08 outer + light #272115 inner). The four slabs register the
-     four feature quadrants (breeze / stench / pit-or-wumpus / gold). Stretched
-     to fill one room (wall-center to wall-center). */
+     FLOOR — one ROOM = a 5-REGION tile (viewBox 100x100): 4 pentagon slabs,
+     each quadrant with its room-center-facing corner sliced off, plus a
+     central diamond (a square rotated 45deg) filling the gap. Same look as
+     before: base fill #1a1712, double-stroke slab seam (dark #0d0b08 outer +
+     light #272115 inner) traced along each region's true edges. Geometry
+     matches artcandidates/tile-layout-5region.svg exactly. Region -> fact:
+     Q1 top-left = Breeze, Q2 top-right = Gold, D center = Pit,
+     Q3 bottom-right = Wumpus, Q4 bottom-left = Stench. Stretched to fill one
+     room (wall-center to wall-center) — see artcandidates/floor-5region.svg
+     for the readable, unminified source. */
   --tex-floor:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect width='100' height='100' fill='%231a1712'/%3E%3Cg fill='%23211d16'%3E%3Ccircle cx='13' cy='16' r='8'/%3E%3Ccircle cx='37' cy='35' r='10'/%3E%3Ccircle cx='63' cy='13' r='6'/%3E%3Ccircle cx='88' cy='37' r='9'/%3E%3Ccircle cx='16' cy='63' r='7'/%3E%3Ccircle cx='38' cy='88' r='8'/%3E%3Ccircle cx='63' cy='66' r='10'/%3E%3Ccircle cx='84' cy='84' r='7'/%3E%3C/g%3E%3Cg fill='none' stroke='%230d0b08' stroke-width='2'%3E%3Crect x='1' y='1' width='48' height='48'/%3E%3Crect x='51' y='1' width='48' height='48'/%3E%3Crect x='1' y='51' width='48' height='48'/%3E%3Crect x='51' y='51' width='48' height='48'/%3E%3C/g%3E%3Cg fill='none' stroke='%23272115' stroke-width='1'%3E%3Crect x='2' y='2' width='46' height='46'/%3E%3Crect x='52' y='2' width='46' height='46'/%3E%3Crect x='2' y='52' width='46' height='46'/%3E%3Crect x='52' y='52' width='46' height='46'/%3E%3C/g%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Crect width='100' height='100' fill='%231a1712'/%3E%3Cg fill='none' stroke='%230d0b08' stroke-width='2' stroke-linejoin='round'%3E%3Cpolygon points='50.00,24.48 75.52,50.00 50.00,75.52 24.48,50.00'/%3E%3Cpolygon points='0.71,0.71 49.28,0.70 49.00,23.53 23.53,49.00 0.70,49.28'/%3E%3Cpolygon points='50.72,0.70 99.29,0.71 99.30,49.28 76.47,49.00 51.00,23.53'/%3E%3Cpolygon points='99.30,50.72 99.29,99.29 50.72,99.30 51.00,76.47 76.47,51.00'/%3E%3Cpolygon points='0.70,50.72 23.53,51.00 49.00,76.47 49.28,99.30 0.71,99.29'/%3E%3C/g%3E%3Cg fill='none' stroke='%23272115' stroke-width='1' stroke-linejoin='round'%3E%3Cpolygon points='50.00,25.48 74.52,50.00 50.00,74.52 25.48,50.00'/%3E%3Cpolygon points='1.41,1.41 48.57,1.40 48.00,23.58 23.58,48.00 1.40,48.57'/%3E%3Cpolygon points='51.43,1.40 98.59,1.41 98.60,48.57 76.42,48.00 52.00,23.58'/%3E%3Cpolygon points='98.60,51.43 98.59,98.59 51.43,98.60 52.00,76.42 76.42,52.00'/%3E%3Cpolygon points='1.40,51.43 23.58,52.00 48.00,76.42 48.57,98.60 1.41,98.59'/%3E%3C/g%3E%3C/svg%3E");
 
   /* WALL — the wall is BUILT from blocks (Step 2), not a tiled sheet:
        - a square CORNER post at every wall junction, and
@@ -446,14 +450,20 @@ body {
 .fog-cloud svg { position: absolute; inset: 0; width: 100%; height: 100%;
                  display: block; overflow: visible; }
 
-/* Gently rock the whole cloud a hair. Applied to the inner <g>; transform-origin
-   is set inline (in user units, the viewBox center) so it pivots about its
-   middle, not the group's bbox. */
-.fog-rock { animation: fog-rock 7s ease-in-out infinite; }
+/* Gently rock the whole cloud. Applied to the inner <g>; transform-origin is
+   set inline (in user units, the viewBox center) so it pivots about its
+   middle, not the group's bbox. Duration/delay are randomized per-instance
+   (inline style, see ui.js) so neighboring clouds don't rock in lockstep. */
+.fog-rock {
+  --fog-rock-amp: 2.5deg;
+  animation-name: fog-rock;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
 @keyframes fog-rock {
-  0%   { transform: rotate(-1.5deg); }
-  50%  { transform: rotate( 1.5deg); }
-  100% { transform: rotate(-1.5deg); }
+  0%   { transform: rotate(calc(-1 * var(--fog-rock-amp))); }
+  50%  { transform: rotate(var(--fog-rock-amp)); }
+  100% { transform: rotate(calc(-1 * var(--fog-rock-amp))); }
 }
 
 /* Wind arcs (breeze glyph + pit) slowly rotate about the SVG center (50,50 in
@@ -506,6 +516,25 @@ body {
   z-index: 2;
 }
 .torch svg { width: 100%; height: auto; display: block; }
+
+/* Entrance ladder, fixed at (1,1) only (see renderCell), resting against the
+   SOUTH wall (the bottom edge of the grid — world y increases upward, see
+   renderGrid's row->y mapping), centered horizontally like it's leaned up
+   against the wall from inside the room. */
+.ladder {
+  position: absolute;
+  left: 50%;
+  bottom: -15px;         /* nudge onto the bottom wall run */
+  transform: translateX(-50%);
+  width: 60%;
+  max-width: 68px;
+  height: 40px;          /* explicit, so the svg below has a real basis to squash against */
+  pointer-events: none;
+  z-index: 2;
+}
+/* svg fills the wrapper exactly (both dims fixed by .ladder above) — squashed
+   vertically only, via viewBox + preserveAspectRatio="none" on the element. */
+.ladder svg { width: 100%; height: 100%; display: block; }
 
 /* Unlit: hide the flame, leave the dark bracket. */
 .torch:not(.lit) .flame { display: none; }
@@ -720,7 +749,8 @@ body {
 
 /* The two phases get matching left-accent cues in contrasting hues, so the
    pipeline-before-resolution and the resolution proper read as distinct phases:
-     - preprocessing (Input / Pure Symbol / Unit Subsumption): cool blue
+     - preprocessing (Anchoring and Component Separation / Pure Symbol
+       Elimination / Unit Subsumption): cool blue
      - resolution steps: a warmer green (echoes the panel's "entailed/yes" green) */
 .prep-step > summary {
   color: var(--neon-teal);
@@ -834,6 +864,268 @@ body {
   text-shadow: 0 0 8px var(--gold);
 }
 
+/* ---- panel tabs (Wumpus Dungeon / Resolution) ----
+   The tab bar IS the panel's title bar — there is no separate fixed <h2>
+   above it (see renderGrid/renderSolver). The default-selected tab reads
+   like the old .panel h2 (Cinzel, gold, bold, wide letter-spacing, glow) so
+   the panel looks unchanged before a user ever switches tabs; inactive tabs
+   sit dimmer beside it.
+
+   Browser-tab shape: ONE continuous rule belongs to .tab-bar alone (its own
+   border-bottom) — buttons carry NO bottom border of their own, so there is
+   nothing to visually disconnect from it. Each button has its own left/
+   right/top border, like a folder tab standing up from the row. The active
+   tab "cuts" the shared rule by covering it: it's given its own bottom
+   border in the PANEL's background color, drawn 1px below the bar's rule
+   (via a bottom offset), painting over that 1px stretch of the line — so it
+   visually fuses with the content beneath with no dividing line. */
+.tab-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex: 0 0 auto;
+  position: relative;               /* positioning context for the active tab's cut */
+  border-bottom: 1px solid var(--border-glow);
+  /* Explicit height, tuned to match .panel h2's own rule position exactly
+     (~10px panel padding + line box + 6px padding-bottom, adjusted a couple
+     px for actual rendered line-height vs. the naive estimate). Pulling the
+     bar up by 10px (closing the gap above it, same as .panel's padding) and
+     giving it a fixed height reproduces that exact geometry regardless of
+     <button> UA quirks, since buttons are centered within this height (see
+     .tab-bar button). Tune this ONE number if the rule drifts again. */
+  height: 31px;
+  margin: -10px 0 10px;
+}
+.tab-bar button {
+  /* <button> carries UA form-control chrome (default line-height, internal
+     alignment) that fights simple padding-based centering — so instead of
+     fighting it, each button is its OWN flex container, centering its label
+     in the exact box height set by .tab-bar (100%), independent of any UA
+     button quirks. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  background: none;
+  border: 1px solid transparent;    /* no border-bottom here — the shared rule is .tab-bar's own */
+  border-radius: 4px 4px 0 0;
+  color: var(--gold-dim);      /* brighter than --text-dim, still reads as inactive */
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tab-bar button:not(:disabled):hover {
+  color: var(--gold);
+}
+.tab-btn.active {
+  color: var(--gold);
+  border-color: var(--border-glow) var(--border-glow) transparent;
+  background: var(--bg-panel);
+  text-shadow: 0 0 6px rgba(180,100,0,0.5);
+}
+/* The actual "cut": a 2px-tall bar in the panel's own background, positioned
+   to sit exactly over the shared rule below this tab — painting over it. */
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: var(--bg-panel);
+}
+.tab-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--text-dim);
+}
+
+/* Generic content area for a non-Dungeon/non-Resolution tab (About, How To,
+   Decision Rules placeholder). */
+.tab-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.tab-placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  margin-top: 30px;
+}
+
+/* ---- About / How To prose (Wumpus Dungeon panel) ---- */
+.prose {
+  padding: 4px 6px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.prose h3 {
+  margin: 18px 0 6px;
+  font-family: var(--font-label);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border-bottom: 1px solid var(--border-dark);
+  padding-bottom: 4px;
+}
+.prose h3:first-child {
+  margin-top: 4px;
+}
+.prose p {
+  margin: 0 0 10px;
+}
+.prose ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+.prose li {
+  margin-bottom: 6px;
+}
+.prose strong {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+.prose em {
+  color: var(--text-body);
+  font-style: italic;
+}
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--neon-teal);
+}
+
+/* Reference diagram (How To tab): the 5-region room layout. The SVG is just
+   the line skeleton (room border + the diamond/cross dividers); the actual
+   labels and hover-glyphs are HTML, absolutely positioned on top of it in
+   the same 0-100 percentage space, so a region can swap its text label for
+   the REAL in-game glyph (the same asset/generator renderCell uses) on
+   hover — something plain SVG text can't do without <foreignObject>. */
+.howto-diagram {
+  position: relative;
+  max-width: 220px;
+  aspect-ratio: 1;
+  margin: 4px auto 14px;
+}
+.howto-diagram svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;   /* clicks/hovers pass through to the HTML regions above */
+}
+
+.howto-region {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.howto-region-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-body);
+}
+/* The glyph container is sized/positioned like a mini version of a real
+   .grid-cell region (see .percept-glyph/.pit in the game board CSS) — both
+   makeBreeze()/makePit()'s own absolute-positioned SVG and the plain <img>
+   tags need a sized, positioned ancestor to size themselves against. */
+.howto-region-glyph {
+  position: relative;
+  width: 70%;
+  height: 70%;
+  display: none;
+}
+.howto-region-glyph img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+/* Nudge the gold glyph up slightly, matching the small vertical adjustment
+   placeInRegion applies to it on the real game board. */
+#howto-region-gold .howto-region-glyph img {
+  top: calc(50% - 10px);
+}
+.howto-region:hover .howto-region-label {
+  display: none;
+}
+.howto-region:hover .howto-region-glyph {
+  display: block;
+}
+
+/* ---- Decision Rules tab: the automatic policy's rule-by-rule trace ----
+   ALL rules are always listed, in order, at normal (readable) brightness: an
+   empty checkbox marks a rule not yet evaluated this turn, a red X marks one
+   the policy checked and rejected, and a single green check marks the one
+   that fired (with the action it chose). Brightness never signals "not
+   evaluated" — only the mark glyph does — so the list stays easy to read
+   before a student ever hits Run/Step. */
+.decision-rule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.decision-rule {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border-dark);
+  color: var(--text-body);
+}
+.decision-rule-mark {
+  flex: 0 0 auto;
+  width: 14px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.decision-rule.rejected .decision-rule-mark {
+  color: var(--blood-bright);
+}
+.decision-rule.matched .decision-rule-mark {
+  color: var(--neon-green);
+}
+.decision-rule-num {
+  flex: 0 0 auto;
+  width: 18px;   /* fixed, wide enough for "10." — so 1-digit and 2-digit rule
+                    numbers don't shift the label's start position */
+  color: var(--text-dim);
+}
+/* The label is a separate flex item from the mark/number, so a wrapped
+   second line hangs at the LABEL's own left edge (past the mark+number),
+   not back under the rule number — a standard hanging indent, achieved
+   here via flex layout instead of text-indent tricks. */
+.decision-rule-label {
+  flex: 1;
+  max-width: 75%;   /* wrap earlier so a long label doesn't crowd the action column */
+}
+.decision-rule-action {
+  flex: 0 0 auto;
+  min-width: 70px;      /* reserves room so the label wraps before crowding this column */
+  color: var(--gold-bright);
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(180,100,0,0.4);
+}
+
 /* Left half: movement pad. A square 3x3 grid: aspect-ratio:1 keeps the whole
    pad square, so its three equal rows/columns (1fr) are each square too and the
    buttons come out square with equal N–S and W–E spacing. It scales with the
@@ -936,6 +1228,13 @@ body {
   pointer-events: none;
 }
 
+/* Mirror: in manual mode, Run/Step do nothing, so they're grayed and inert
+   until Automatic is selected. */
+.run-step.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* ---- ask panel (manual query) ---- */
 
 /* The query display sits left, Clear/Submit to its right. */
@@ -1030,6 +1329,69 @@ body {
   min-width: 34px;
   font-family: var(--font-mono);
   font-size: 15px;
+}
+
+/* ---- game-over outcome overlay ----
+   Dramatic stylized text, centered over the board itself once the game ends
+   (see renderGrid) — NOT in the status line, which never mentions score or
+   outcome (the automatic policy never considers score, so surfacing it as a
+   headline result would overstate its role). Three moods:
+     win  ('Victory') -> shiny gold, glittering, triumphant
+     left ('Escape')  -> muted, survived-but-no-win, no celebration
+     dead ('Defeat')  -> blood-red, devouring, grim */
+.outcome-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;             /* above fog (3), tokens, and walls */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* --font-title (blackletter) reads ambiguously at this size — e.g. its "V"
+     is easily misread as "B" — so this uses --font-label (Cinzel) instead:
+     still dramatic/inscriptional at large size + wide tracking, but legible. */
+  font-family: var(--font-label);
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 12vmin;
+  letter-spacing: 8px;
+  text-align: center;
+  background: rgba(0,0,0,0.35);
+}
+.outcome-win {
+  color: #ffefa8;
+  text-shadow:
+    0 0 12px #fff8dd,
+    0 0 30px var(--gold-bright),
+    0 0 60px var(--gold),
+    0 0 100px rgba(240,192,64,0.85);
+  animation: outcome-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes outcome-shimmer {
+  0%, 100% {
+    opacity: 0.9;
+    text-shadow: 0 0 12px #fff8dd, 0 0 30px var(--gold-bright), 0 0 60px var(--gold), 0 0 100px rgba(240,192,64,0.85);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 20px #fff8dd, 0 0 46px var(--gold-bright), 0 0 90px var(--gold), 0 0 140px rgba(240,192,64,1);
+  }
+}
+.outcome-left {
+  color: #c9c9c9;
+  text-shadow: 0 0 16px rgba(180,180,190,0.35);
+}
+.outcome-dead {
+  color: var(--blood-bright);
+  text-shadow:
+    0 0 18px var(--blood),
+    0 0 40px rgba(139,0,0,0.7),
+    0 4px 0 #2a0000;
+  animation: outcome-pulse 1.6s ease-in-out infinite;
+}
+@keyframes outcome-pulse {
+  0%, 100% { opacity: 0.88; text-shadow: 0 0 18px var(--blood), 0 0 40px rgba(139,0,0,0.7), 0 4px 0 #2a0000; }
+  50%      { opacity: 1;    text-shadow: 0 0 26px var(--blood-bright), 0 0 60px rgba(204,34,0,0.85), 0 4px 0 #2a0000; }
 }
 
 /* ---- scrollbars ----

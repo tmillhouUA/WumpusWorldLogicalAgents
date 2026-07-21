@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const kbLabel = 'current';// which snapshot the panel shows (selector is a later step)
   const kbOpen = new Set(); // which KB sections the user has expanded (default: none)
   let resolutions = [];     // every ask of the latest turn, each a stepped trace
+  let lastPolicyTrace = null; // rule-by-rule pass/fail list from the latest 'decision'
+                               // reply (see logic.js policyAction), for the Decision
+                               // Rules tab. null until the first automatic decision.
   const visited = new Set();// cells the player has entered (mirrors the agent)
   // Facts the USER established by querying, kept as the map's durable record —
   // PERSISTS across turns (unlike `resolutions`, which clears each move). Keyed
@@ -35,10 +38,29 @@ document.addEventListener('DOMContentLoaded', () => {
   let askedFacts = {};
   let gen = 0;              // game generation, to ignore stale worker replies
   let inferring = false;    // a step is posted and we're awaiting the worker's reply
-  let mode = 'manual';      // 'manual' (user drives) | 'automatic' (agent drives via policy)
+  let mode = 'automatic';   // 'manual' (user drives) | 'automatic' (agent drives via policy)
   let running = false;      // automatic Run loop active (Run/Stop toggle)
   let stepping = false;     // a single Step is in flight (one-shot, not the loop)
   const AUTO_DELAY = 400;   // ms between automatic steps, so the run is watchable
+
+  // Whether this game's agent has had its frontier-inference sweep run at
+  // least once (autoInfer:true). A fresh game's initial 'new' sweep always
+  // runs with autoInfer:false, regardless of the selected mode — Automatic
+  // is the default mode, but the game should "do nothing and query nothing"
+  // until Run/Step is actually pressed. The first Run/Step then triggers a
+  // catch-up resync (see requestDecision/stepOnce) before asking for a
+  // decision, so that first press infers exactly what a normal move into
+  // (1,1) would have — not what an eagerly pre-swept agent already knew for
+  // free. pendingAutoDecision marks that catch-up's 'done' reply as the
+  // trigger for the REAL decide request, rather than a normal turn-end.
+  let agentSwept = false;
+  let pendingAutoDecision = false;
+
+  // Which tab each tabbed panel currently shows. Module-level (not local to the
+  // render function) because renderGrid/renderSolver rebuild their panel's whole
+  // innerHTML on every call (every action) — the active tab must survive that.
+  let gameTab = 'dungeon';      // 'dungeon' | 'about' | 'howto'
+  let resolverTab = 'resolution'; // 'resolution' | 'decisionRules'
 
   // The agent runs in a worker so a slow sweep can't freeze the UI.
   const worker = new Worker('worker.js');
@@ -62,8 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (e.data.type === 'decision') {
-      // The worker answered "what would the policy do?". Apply it (through the
-      // normal action flow) if a run is active or a single Step is in flight.
+      // The worker answered "what would the policy do?". Stash the trace for
+      // the Decision Rules tab (repaint if it's the one currently showing),
+      // then apply the action (through the normal action flow) if a run is
+      // active or a single Step is in flight.
+      lastPolicyTrace = e.data.trace;
+      if (resolverTab === 'decisionRules') renderSolver();
       if (running || stepping) autoApply(e.data.action);
       return;
     }
@@ -79,6 +105,24 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGrid();
     renderKB();
     renderSolver();
+
+    // This 'done' was the one-time catch-up resync (see requestDecision/
+    // stepOnce): the FIRST Run/Step press only catches the agent up to what
+    // it would already know had it just moved into (1,1) — it does not also
+    // take a real action. That's a turn in its own right (mirrors arriving
+    // at the entrance), so it stops here; the NEXT press is what requests
+    // and applies the first real decision.
+    if (pendingAutoDecision) {
+      pendingAutoDecision = false;
+      agentSwept = true;
+      stepping = false;
+      renderControls();
+      if (running) {
+        if (game.state.done) stopRun();
+        else setTimeout(requestDecision, AUTO_DELAY);
+      }
+      return;
+    }
 
     // A single Step just completed — clear the one-shot flag and refresh the
     // controls (its buttons may re-enable/disable now the action settled).
@@ -106,15 +150,26 @@ document.addEventListener('DOMContentLoaded', () => {
     return { x: p.x, y: p.y, breezy: p.breezy, stenchy: p.stenchy, glitter: p.glitter, alive: game.state.alive };
   }
 
-  function newGame() {
-    game = new WW.Game({ size: 5 });
+  let lastSeed = null;      // the seed behind the current map, so Reset can replay it
+
+  // Build a fresh game world from `seed` (deterministic — same seed, same
+  // pits/wumpus/gold layout every time) and reset all per-game UI state.
+  // Shared by New Map (picks a fresh seed) and Reset (reuses lastSeed), so a
+  // problem map can be replayed exactly to watch when/why a policy decision
+  // (e.g. firing the arrow) happens.
+  function startGame(seed) {
+    lastSeed = seed;
+    game = new WW.Game({ size: 5, seed });
     gen++;
     reveal = {};
     snapshots = {};
     resolutions = [];
+    lastPolicyTrace = null;             // stale trace from the previous map shouldn't linger
     askedFacts = {};
+    fogCache = {};                       // fresh map -> stale cached fog layouts don't apply
     running = false;                    // halt any active run; the button resets below
     stepping = false;                   // drop any in-flight single step
+    agentSwept = false;                 // fresh agent needs its first Run/Step to catch it up
     visited.clear();
     visited.add(game.key(...game.state.location));
     renderGrid();                       // show the fresh map at once
@@ -122,7 +177,30 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSolver();
     renderControls();                   // reset Run/Stop label + button enabled states
     setBusy(true);                      // lock until the fresh agent's first sweep replies
-    worker.postMessage({ type: 'new', gen, size: game.size, percept: currentPercept(), mode });
+    // Force the initial sweep to withhold frontier inference regardless of
+    // the SELECTED mode (Automatic is the default, but the game should do
+    // nothing until Run/Step is actually pressed — see agentSwept above).
+    worker.postMessage({ type: 'new', gen, size: game.size, percept: currentPercept(), mode: 'manual' });
+  }
+
+  function newGame() {
+    // Date.now() ^ a random component: distinct across rapid clicks, and
+    // always defined so every map is replayable via Reset.
+    startGame((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
+  }
+
+  // Called once at load: always a fresh random map. A specific map (e.g. one
+  // being replayed after a page reload to pick up a code change) is instead
+  // recovered via Load Map + its Level number, not the URL.
+  function startInitialGame() {
+    newGame();
+  }
+
+  // Replay the CURRENT map from scratch (same seed -> identical pits/wumpus/
+  // gold layout), so a run that exposed a bug can be re-driven step by step.
+  function resetGame() {
+    if (lastSeed === null) return;
+    startGame(lastSeed);
   }
 
   // Lock/unlock input while the worker is inferring. The avatar has already
@@ -139,7 +217,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const hadArrow = game.state.hasArrow;     // did this Shoot actually fire?
     const from = [...game.state.location];    // firing cell (Shoot doesn't move)
     const out = game.act(action);
-    if (game.state.alive) visited.add(game.key(...game.state.location));
+    // Reveal the fatal room even on death, so the player can see what killed
+    // them (pit or Wumpus) instead of staring at fog. This is purely the UI's
+    // OWN visited set (drives fog display only) — the agent's KB is separate
+    // and already refuses to learn from a percept where alive is false (see
+    // Agent.observe), so marking this room visited here can't leak anything
+    // into the agent's own knowledge.
+    visited.add(game.key(...game.state.location));
 
     // A fired arrow also yields a locational deduction (no-op shot does not).
     const shot = (action.startsWith('Shoot') && hadArrow)
@@ -155,6 +239,27 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSolver();                     // clear the panel + show the indicator at once
     worker.postMessage({ type: 'act', gen, step, mode });
   }
+
+  // Keyboard shortcuts for the manual pads (arrows -> Move, WASD -> Shoot, G ->
+  // Grab, C -> Climb) — an alternative to clicking, dispatching through the
+  // exact same doAction path as a click. Only live in Manual mode: in
+  // Automatic the pads are grayed out and inert (see .controls.disabled),
+  // and doAction itself has no mode check of its own (clicks are blocked by
+  // CSS pointer-events, not JS), so this listener enforces that same rule
+  // itself rather than bypassing it. Ignored while typing in a form control,
+  // so it can't hijack keys meant for some future text input.
+  const MOVE_KEYS = { ArrowUp: 'MoveN', ArrowRight: 'MoveE', ArrowDown: 'MoveS', ArrowLeft: 'MoveW' };
+  const SHOOT_KEYS = { w: 'ShootN', d: 'ShootE', s: 'ShootS', a: 'ShootW' };
+  document.addEventListener('keydown', (e) => {
+    if (mode !== 'manual') return;
+    if (e.target.matches('input, textarea, select, button')) return;
+    const key = e.key;
+    let action = MOVE_KEYS[key] || SHOOT_KEYS[key.toLowerCase()] ||
+      (key.toLowerCase() === 'g' ? 'Grab' : key.toLowerCase() === 'c' ? 'Climb' : null);
+    if (!action) return;
+    e.preventDefault();   // arrow keys would otherwise scroll the page
+    doAction(action);
+  });
 
   // ---- grid (game panel) -------------------------------------------------
 
@@ -215,6 +320,27 @@ document.addEventListener('DOMContentLoaded', () => {
     frag.appendChild(torch);
 
     return frag;
+  }
+
+  /* The entrance ladder: fixed at (1,1) only, resting against the south wall
+     (world y increases upward — see renderGrid's row->y mapping — so the
+     bottom edge of the grid is south), centered horizontally. Inline SVG,
+     two rails + rungs, angled slightly as if leaned against the wall. */
+  function makeLadder() {
+    const el = document.createElement('div');
+    el.className = 'ladder';
+    el.innerHTML =
+      '<svg viewBox="0 0 40 34" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">' +
+        // rails
+        '<path d="M8 34 L13 2" stroke="#5a3d1e" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+        '<path d="M32 34 L27 2" stroke="#5a3d1e" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+        // rungs
+        '<path d="M9.4 28 L30.6 28" stroke="#4a3016" stroke-width="2.5" stroke-linecap="round"/>' +
+        '<path d="M10.2 21 L29.8 21" stroke="#4a3016" stroke-width="2.5" stroke-linecap="round"/>' +
+        '<path d="M11 14 L29 14" stroke="#4a3016" stroke-width="2.5" stroke-linecap="round"/>' +
+        '<path d="M11.8 7 L28.2 7" stroke="#4a3016" stroke-width="2.5" stroke-linecap="round"/>' +
+      '</svg>';
+    return el;
   }
 
   /* A pit: a jagged hole centered in the room, about a doorway wide. Two jagged
@@ -368,12 +494,169 @@ document.addEventListener('DOMContentLoaded', () => {
       `<circle cx="${b.cx.toFixed(1)}" cy="${b.cy.toFixed(1)}" r="${b.r.toFixed(1)}" ` +
       `fill="${b.fill}" opacity="${b.op.toFixed(2)}"/>`).join('');
 
+    // Desync + accentuate the rock so neighboring clouds don't move in
+    // lockstep: randomize duration/delay/direction and nudge the amplitude
+    // per-instance (see .fog-rock's --fog-rock-amp custom property).
+    const rockDur = (2 + Math.random() * 2).toFixed(1);   // 2-4s per cycle
+    const rockDelay = (-Math.random() * 10).toFixed(1);   // negative = starts mid-cycle
+    const rockDir = Math.random() < 0.5 ? 'normal' : 'reverse';
+    const rockAmp = (3 + Math.random() * 2).toFixed(1); // 3-5deg
+
     const el = document.createElement('div');
     el.className = 'fog-cloud';
     el.innerHTML =
       `<svg viewBox="0 0 ${SIZE} ${SIZE}" xmlns="http://www.w3.org/2000/svg" overflow="visible">` +
-        `<g class="fog-rock" style="transform-origin:${CENTER}px ${CENTER}px">${circles}</g>` +
+        `<g class="fog-rock" style="transform-origin:${CENTER}px ${CENTER}px; ` +
+        `--fog-rock-amp:${rockAmp}deg; animation-duration:${rockDur}s; ` +
+        `animation-delay:${rockDelay}s; animation-direction:${rockDir}">${circles}</g>` +
       '</svg>';
+    return el;
+  }
+
+  // Point-in-polygon test (even-odd ray casting). points: [{x,y}, ...].
+  // Standard: cast a ray in +x from (px,py), count polygon-edge crossings;
+  // odd = inside. Used only to constrain blob CENTERS (see makeFogPoly) —
+  // never to clip a rendered shape.
+  function pointInPolygon(px, py, points) {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const xi = points[i].x, yi = points[i].y;
+      const xj = points[j].x, yj = points[j].y;
+      const crosses = (yi > py) !== (yj > py);
+      if (crosses) {
+        const xCross = xi + (py - yi) * (xj - xi) / (yj - yi);
+        if (px < xCross) inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  // Cache of generated fog blob layouts, keyed by a caller-supplied string
+  // (typically "x,y,regionKey"). renderGrid() rebuilds the WHOLE board (and
+  // so calls makeFogPoly again) on every action, even for cells nothing
+  // happened in; without this cache each still-fogged region would get a
+  // brand-new random scatter every step, flickering visibly. A region's fog
+  // is only ever generated once and reused until it's actually revealed (at
+  // which point renderCell stops calling makeFogPoly for it, and the cache
+  // entry simply goes unused — no explicit eviction needed since a fresh
+  // New Map/Reset replaces the whole cache below).
+  let fogCache = {};
+
+  // Fog cloud filling an ARBITRARY polygon (not just a square quadrant) — the
+  // generalization of makeFog(). points: a flat array of {x,y} pairs in 0-100
+  // local space (the same convention makePit()'s rim polygons use), e.g. a
+  // pentagon or the diamond from the 5-region tile layout.
+  //
+  // Same "balloons tied to points in a polygon" mechanic as makeFog(): blob
+  // CENTERS are rejection-sampled to fall within (up to the edge of) the given
+  // polygon, but each blob is drawn as a full, uncropped circle — never
+  // clipped to the polygon boundary. That's what lets a blob near the edge
+  // spill its round rim into a neighboring region instead of stopping at a
+  // hard seam. Spacing (MIN_DIST) is scoped to THIS call's own blobs only —
+  // regions are generated independently and never spaced against each other.
+  //
+  // cacheKey (optional): if given, the blob layout is generated once and
+  // reused on subsequent calls with the same key (see fogCache above), so a
+  // fogged region's cloud stays visually stable across re-renders instead of
+  // resampling every step. Omit for one-off/reference uses (e.g. contact
+  // sheets, where a fresh scatter each call is the point).
+  function makeFogPoly(points, cacheKey) {
+    // Blob size/spacing/spill are tuned relative to the LOCAL coordinate space
+    // (0-100 = wall-center to wall-center), which now renders at ~1 local unit
+    // per room-percent — a real, larger px-per-unit scale than the old square
+    // makeFog() used (that version squeezed its whole padded canvas into 90%
+    // of the cell, ~0.33% per unit). Same visual blob size at this new scale
+    // needs these constants scaled down by that ratio (~3.4x): R 13-20 -> 4-6,
+    // MIN_DIST 5 -> 1.5, SPILL 90 -> 26.
+    const N = 200, R_MIN = 4, R_MAX = 6;
+    const COLORS = ['#4a4d53', '#565a60', '#3f4247', '#616570'];
+    const MIN_DIST = 1.5, MAX_TRIES = 60;
+
+    // Bounding box of the polygon, expanded by SPILL (candidate-sampling
+    // field) and then by PAD (transparent viewBox margin so no blob's rim can
+    // ever reach the SVG viewport edge — same zero-clipping guarantee as
+    // makeFog's PAD = R_MAX + 2).
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const SPILL = 26, PAD = R_MAX + 2;
+    const spanMinX = minX - SPILL, spanMaxX = maxX + SPILL;
+    const spanMinY = minY - SPILL, spanMaxY = maxY + SPILL;
+    // Shift so the sampling field's own top-left lands at (PAD, PAD) in the
+    // SVG's local coordinate space, matching makeFog()'s SPAN_MIN = PAD frame.
+    const offX = PAD - spanMinX, offY = PAD - spanMinY;
+    const sizeX = (spanMaxX - spanMinX) + 2 * PAD;
+    const sizeY = (spanMaxY - spanMinY) + 2 * PAD;
+    const rangeR = (a, b) => a + (b - a) * Math.random();
+
+    // On a cache hit, skip generation entirely and reuse the stored markup —
+    // this is what keeps a still-fogged region's blob layout (and its rock
+    // animation timing) stable across re-renders instead of resampling and
+    // re-rolling every step (see fogCache above).
+    const cached = cacheKey !== undefined ? fogCache[cacheKey] : undefined;
+    let circles = cached && cached.circles;
+    if (circles === undefined) {
+      // Sample a point uniformly inside the polygon via rejection against its
+      // bounding box (retry until a candidate lands inside — cheap for the
+      // convex/near-convex shapes used here; MAX_TRIES bounds the worst case).
+      const samplePointInPolygon = () => {
+        for (let t = 0; t < MAX_TRIES; t++) {
+          const px = rangeR(minX, maxX), py = rangeR(minY, maxY);
+          if (pointInPolygon(px, py, points)) return { x: px, y: py };
+        }
+        // Fallback: bounding-box center is inside any of this project's shapes
+        // (pentagons, diamond, square) even if random sampling kept missing.
+        return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+      };
+
+      const blobs = [];
+      for (let i = 0; i < N; i++) {
+        let cx, cy;
+        for (let t = 0; t < MAX_TRIES; t++) {
+          const p = samplePointInPolygon();
+          cx = p.x + offX; cy = p.y + offY;
+          if (!blobs.some(b => Math.hypot(cx - b.cx, cy - b.cy) < MIN_DIST)) break;
+        }
+        blobs.push({
+          cx, cy,
+          r: rangeR(R_MIN, R_MAX),
+          op: rangeR(0.14, 0.30),
+          fill: COLORS[Math.floor(Math.random() * COLORS.length)],
+        });
+      }
+      circles = blobs.map(b =>
+        `<circle cx="${b.cx.toFixed(1)}" cy="${b.cy.toFixed(1)}" r="${b.r.toFixed(1)}" ` +
+        `fill="${b.fill}" opacity="${b.op.toFixed(2)}"/>`).join('');
+    }
+
+    // Desync + accentuate the rock so neighboring regions/rooms don't move in
+    // lockstep: randomize duration/delay/direction and nudge the amplitude
+    // per-instance (see .fog-rock's --fog-rock-amp custom property). Cached
+    // alongside the blob layout so a still-fogged region's rock doesn't
+    // restart/re-roll its phase on every re-render (every game action).
+    let rock = cached && cached.rock;
+    if (rock === undefined) {
+      rock = {
+        dur: (6 + Math.random() * 4).toFixed(1),    // 6-10s per cycle
+        delay: (-Math.random() * 10).toFixed(1),    // negative = starts mid-cycle
+        dir: Math.random() < 0.5 ? 'normal' : 'reverse',
+        amp: (2 + Math.random() * 1.5).toFixed(1),  // 2-3.5deg
+      };
+    }
+    if (cacheKey !== undefined) fogCache[cacheKey] = { circles, rock };
+    const { dur: rockDur, delay: rockDelay, dir: rockDir, amp: rockAmp } = rock;
+
+    const el = document.createElement('div');
+    el.className = 'fog-cloud';
+    el.innerHTML =
+      `<svg viewBox="0 0 ${sizeX.toFixed(1)} ${sizeY.toFixed(1)}" xmlns="http://www.w3.org/2000/svg" overflow="visible">` +
+        `<g class="fog-rock" style="transform-origin:${(sizeX/2).toFixed(1)}px ${(sizeY/2).toFixed(1)}px; ` +
+        `--fog-rock-amp:${rockAmp}deg; animation-duration:${rockDur}s; ` +
+        `animation-delay:${rockDelay}s; animation-direction:${rockDir}">${circles}</g>` +
+      '</svg>';
+    // Stash the bbox/offset mapping so callers can position this element
+    // against whatever local coordinate space the polygon was defined in.
+    el.dataset.bbox = JSON.stringify({ minX, minY, maxX, maxY, sizeX, sizeY, offX, offY });
     return el;
   }
 
@@ -392,55 +675,159 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // 5-region tile layout (confirmed via artcandidates/tile-layout-5region.svg):
+  // 4 pentagons (each quadrant with its room-center-facing corner sliced off)
+  // plus a central diamond, in 0-100 LOCAL space spanning the room WALL-CENTER
+  // to WALL-CENTER (matching how .room-floor::before already bleeds under the
+  // walls — see its `inset: calc(var(--wall-th) / -2)` rule). Region -> fact:
+  //   Q1 top-left = Breeze, Q2 top-right = Gold, D center = Pit,
+  //   Q3 bottom-right = Wumpus, Q4 bottom-left = Stench.
+  const FOG_REGIONS = {
+    Q1: [ {x:0,y:0}, {x:50,y:0}, {x:50,y:23.48}, {x:23.48,y:50}, {x:0,y:50} ],
+    Q2: [ {x:50,y:0}, {x:100,y:0}, {x:100,y:50}, {x:76.52,y:50}, {x:50,y:23.48} ],
+    D:  [ {x:50,y:23.48}, {x:76.52,y:50}, {x:50,y:76.52}, {x:23.48,y:50} ],
+    Q3: [ {x:100,y:50}, {x:100,y:100}, {x:50,y:100}, {x:50,y:76.52}, {x:76.52,y:50} ],
+    Q4: [ {x:0,y:50}, {x:23.48,y:50}, {x:50,y:76.52}, {x:50,y:100}, {x:0,y:100} ],
+  };
+
+  // Place one makeFogPoly() cloud for a region into `cell`. The region's
+  // points are in 0-100 LOCAL room space (wall-center to wall-center); the
+  // .grid-cell itself is the room INTERIOR (wall-face to wall-face), so the
+  // 100-unit room maps onto `calc(100% + var(--wall-th))` of the cell,
+  // centered — 1 local unit = that virtual room's own percentage. The fog
+  // cloud's own SVG spans a padded bounding box around the region (see
+  // makeFogPoly); position/size that whole box in the same percentage terms so
+  // its local (0,0) origin lands at the right spot.
+  // cacheKey: forwarded to makeFogPoly so this region's blob layout is stable
+  // across re-renders (see fogCache) instead of resampling every step.
+  function placeFogRegion(cell, points, cacheKey) {
+    const fog = makeFogPoly(points, cacheKey);
+    const bbox = JSON.parse(fog.dataset.bbox);
+    delete fog.dataset.bbox;
+    // The .fog-cloud DIV IS the padded SVG canvas (sizeX x sizeY local units) —
+    // same model as the old square makeFog()/placeFog(): the div is the whole
+    // (deliberately oversized) canvas, not just the polygon's own bbox, so its
+    // built-in spill naturally overflows into neighboring regions. We only
+    // need to position that whole div so the canvas's local (0,0) — which is
+    // (true-local-x, true-local-y) = (-offX, -offY), see makeFogPoly — lands
+    // at the right spot in the .grid-cell's percentage space.
+    //
+    // 1 local unit, expressed as a CSS percentage of the .grid-cell box, given
+    // the virtual 100-unit room spans (100% + wall-th) of the cell (the room
+    // is wall-center to wall-center; the cell is wall-face to wall-face).
+    const unit = `((100% + var(--wall-th)) / 100)`;
+    // the room's local (0,0) sits half a wall-th before the cell's own 0%
+    const roomOrigin = `(-1 * var(--wall-th) / 2)`;
+    const originX = -bbox.offX, originY = -bbox.offY; // canvas (0,0) in true-local coords
+    fog.style.left = `calc(${roomOrigin} + (${originX}) * ${unit})`;
+    fog.style.top = `calc(${roomOrigin} + (${originY}) * ${unit})`;
+    fog.style.width = `calc(${bbox.sizeX} * ${unit})`;
+    fog.style.height = `calc(${bbox.sizeY} * ${unit})`;
+    cell.appendChild(fog);
+  }
+
+  // Fog a whole cell using the 5-region layout (replaces the old 4-quadrant
+  // placeFog for testing on the real board).
+  function placeFog5(cell) {
+    for (const key of ['Q1', 'Q2', 'D', 'Q3', 'Q4']) {
+      placeFogRegion(cell, FOG_REGIONS[key]);
+    }
+  }
+
+  // Center an element (token/glyph) on a REGION's centroid, sized as a
+  // fraction of that region's own bounding-box extent (not the whole cell).
+  // Uses the same wall-center-to-wall-center unit mapping as placeFogRegion,
+  // so tokens land in the correct region regardless of cell pixel size.
+  // sizeFrac: element size as a fraction of the region's smaller bbox
+  // dimension (so a token doesn't overrun a narrow region).
+  // nudgeYpx: optional fixed pixel offset added to the vertical position
+  // (negative = up), for per-token fine-tuning independent of cell size.
+  function placeInRegion(cell, el, points, sizeFrac, nudgeYpx) {
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+    const extent = Math.min(maxX - minX, maxY - minY);
+    const size = extent * sizeFrac;
+    const unit = `((100% + var(--wall-th)) / 100)`;
+    const roomOrigin = `(-1 * var(--wall-th) / 2)`;
+    const dy = nudgeYpx ? ` + ${nudgeYpx}px` : '';
+    el.style.position = 'absolute';
+    el.style.left = `calc(${roomOrigin} + ${cx} * ${unit})`;
+    el.style.top = `calc(${roomOrigin} + ${cy} * ${unit}${dy})`;
+    el.style.width = el.style.height = `calc(${size} * ${unit})`;
+    el.style.transform = 'translate(-50%, -50%)';
+    cell.appendChild(el);
+  }
+
   function renderCell(x, y) {
     const cell = document.createElement('div');
     cell.className = 'grid-cell';
     // Any cell is a query target: clicking fills the ask builder's coordinate.
     cell.addEventListener('click', () => pickAskCell(x, y));
 
-    // Wall torch, bottom-left of the room. Lit rooms glow; (1,1) is always
-    // visited so it starts lit. (Later: light on visit.)
-    const lit = (x === 1 && y === 1);
-    cell.appendChild(makeTorch(lit));
+    // Wall torch, bottom-left of the room. Lit once the room has been visited.
+    const key = game.key(x, y);
+    const isVisited = visited.has(key);
+    cell.appendChild(makeTorch(isVisited));
+    if (x === 1 && y === 1) cell.appendChild(makeLadder());
 
-    // Pit: reference placement in (2,2) for now.
-    if (x === 2 && y === 2) cell.appendChild(makePit());
+    // Each of the 5 regions is either FOG (undetermined and unvisited), an
+    // OBJECT glyph (revealed and present), or NOTHING (revealed and proven
+    // absent). Visiting a room reveals ALL of it at once, regardless of what's
+    // been inferred (the player would perceive everything by standing there).
+    // Short of a visit, Pit/Wumpus can also be revealed early by inference
+    // (the worker's sweep) or by a direct user query; Breeze/Gold/Stench only
+    // reveal via a direct user query (sweep() doesn't cover them) or a visit.
+    const rev = reveal[key] || {};
+    const asked = askedFacts[key] || {};
+    const pitRevealed    = isVisited || rev.pit === 'YES'    || rev.pit === 'NO'    || asked.pit === 'YES'    || asked.pit === 'NO';
+    const wumpusRevealed = isVisited || rev.wumpus === 'YES' || rev.wumpus === 'NO' || asked.wumpus === 'YES' || asked.wumpus === 'NO';
+    const goldRevealed   = isVisited;
+    const breezeRevealed = isVisited || asked.breezy === 'YES' || asked.breezy === 'NO';
+    const stenchRevealed = isVisited || asked.stenchy === 'YES' || asked.stenchy === 'NO';
 
-    // Wumpus: reference placement in (3,3) for now.
-    if (x === 3 && y === 3) {
-      const wump = document.createElement('img');
-      wump.className = 'wumpus-token';
-      wump.src = 'artcandidates/wumpus-02-menacing-brows.svg';
-      wump.alt = 'wumpus';
-      cell.appendChild(wump);
+    // Q1 Breeze
+    if (!breezeRevealed) {
+      placeFogRegion(cell, FOG_REGIONS.Q1, key + ',Q1');
+    } else if (game.breezyAt(x, y)) {
+      placeInRegion(cell, makeBreeze(), FOG_REGIONS.Q1, 1.0);
     }
-
-    // Gold hoard: reference placement in (4,4) for now.
-    if (x === 4 && y === 4) {
+    // Q2 Gold
+    if (!goldRevealed) {
+      placeFogRegion(cell, FOG_REGIONS.Q2, key + ',Q2');
+    } else if (game.gold[0] === x && game.gold[1] === y && !game.state.hasGold) {
       const gold = document.createElement('img');
-      gold.className = 'hoard-token';
       gold.src = 'artcandidates/hoard-09-heaped-pile.svg';
       gold.alt = 'gold';
-      cell.appendChild(gold);
+      placeInRegion(cell, gold, FOG_REGIONS.Q2, 0.75, -10);
     }
-
-    // Fog: reference placement — cover all four quadrants of (1,4) so we can
-    // judge quadrant coverage, inter-quadrant overlap, and the per-tile variety.
-    // Each fog covers one quadrant; sized OVER the quadrant and centered on it so
-    // its core fills the quadrant while the spill overhangs into its neighbors.
-    // (1,4) and (2,4) both fogged so we can confirm blending ACROSS the shared
-    // vertical wall, not just within a room.
-    if ((x === 1 && y === 4) || (x === 2 && y === 4)) placeFog(cell);
-
-    // Percept glyphs: reference placements — breeze in (2,3), stench in (3,4).
-    // Breeze is generated per render (no two alike, like the pit's wind).
-    if (x === 2 && y === 3) cell.appendChild(makeBreeze());
-    if (x === 3 && y === 4) {
+    // D Pit
+    if (!pitRevealed) {
+      placeFogRegion(cell, FOG_REGIONS.D, key + ',D');
+    } else if (game.pits.has(key)) {
+      placeInRegion(cell, makePit(), FOG_REGIONS.D, 0.75);
+    }
+    // Q3 Wumpus (live or dead variant)
+    if (!wumpusRevealed) {
+      placeFogRegion(cell, FOG_REGIONS.Q3, key + ',Q3');
+    } else if (game.wumpus[0] === x && game.wumpus[1] === y) {
+      const wump = document.createElement('img');
+      wump.src = game.state.wumpusAlive
+        ? 'artcandidates/wumpus-02-menacing-brows.svg'
+        : 'artcandidates/wumpus-dead.svg';
+      wump.alt = game.state.wumpusAlive ? 'wumpus' : 'wumpus (dead)';
+      placeInRegion(cell, wump, FOG_REGIONS.Q3, 1.0, -12.5);
+    }
+    // Q4 Stench
+    if (!stenchRevealed) {
+      placeFogRegion(cell, FOG_REGIONS.Q4, key + ',Q4');
+    } else if (game.stenchyAt(x, y)) {
       const st = document.createElement('img');
-      st.className = 'percept-glyph';
       st.src = 'artcandidates/glyph-stench.svg';
       st.alt = 'stench';
-      cell.appendChild(st);
+      placeInRegion(cell, st, FOG_REGIONS.Q4, 0.8);
     }
 
     const coord = document.createElement('div');
@@ -448,20 +835,15 @@ document.addEventListener('DOMContentLoaded', () => {
     coord.textContent = `(${x},${y})`;
     cell.appendChild(coord);
 
-    for (const a of cellAttrs(x, y)) {
-      // The player is drawn as the hero SVG token, not a text label.
-      if (a.player) {
-        const token = document.createElement('img');
-        token.className = 'player-token';
-        token.src = 'artcandidates/hero-10a3.svg';
-        token.alt = 'player';
-        cell.appendChild(token);
-        continue;
-      }
-      const el = document.createElement('div');
-      el.className = 'attr' + (a.observed ? '' : ' dim') + (a.neg ? ' neg' : '');
-      el.textContent = a.label;
-      cell.appendChild(el);
+    // The player is still drawn as the hero SVG token, at full-cell scale
+    // (not region-scoped — the player moves freely through the whole room).
+    const hereAttr = cellAttrs(x, y).find(a => a.player);
+    if (hereAttr) {
+      const token = document.createElement('img');
+      token.className = 'player-token';
+      token.src = 'artcandidates/hero-10a3.svg';
+      token.alt = 'player';
+      cell.appendChild(token);
     }
     return cell;
   }
@@ -565,11 +947,66 @@ document.addEventListener('DOMContentLoaded', () => {
     return grid;
   }
 
-  function renderGrid() {
-    gamePanel.innerHTML = '<h2>Wumpus Dungeon</h2>';
+  /* Build a tab bar: one button per tab, styled like the mode toggle
+     (.mode-btn.active reused as .tab-btn.active — same gold-highlight
+     language). `tabs` is [{ key, label, disabled? }]. `activeKey` is the
+     currently-selected key; `onSelect(key)` fires on click (ignored for a
+     disabled tab). Returns the bar element; does not touch panel content —
+     the caller decides what to render below based on the active key. */
+  function renderTabBar(tabs, activeKey, onSelect) {
+    const bar = document.createElement('div');
+    bar.className = 'tab-bar';
+    for (const t of tabs) {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' +
+        (t.key === activeKey ? ' active' : '') +
+        (t.disabled ? ' disabled' : '');
+      btn.textContent = t.label;
+      if (t.disabled) {
+        btn.disabled = true;
+        if (t.disabledReason) btn.title = t.disabledReason;
+      } else {
+        btn.addEventListener('click', () => onSelect(t.key));
+      }
+      bar.appendChild(btn);
+    }
+    return bar;
+  }
 
-    // Board first, then the toolbar (New map + status) beneath it.
-    gamePanel.appendChild(renderBoard());
+  function renderGrid() {
+    // The tab bar IS the panel's title bar — "Wumpus Dungeon" is just the
+    // default-selected tab, not a separate fixed heading above the tabs.
+    gamePanel.innerHTML = '';
+
+    gamePanel.appendChild(renderTabBar(
+      [
+        { key: 'dungeon', label: 'Wumpus Dungeon' },
+        { key: 'about',   label: 'About' },
+        { key: 'howto',   label: 'How To' },
+      ],
+      gameTab,
+      (key) => { gameTab = key; renderGrid(); },
+    ));
+
+    if (gameTab === 'about')  { gamePanel.appendChild(renderAboutTab()); return; }
+    if (gameTab === 'howto')  { gamePanel.appendChild(renderHowToTab()); return; }
+
+    // 'dungeon' tab: board first, then the toolbar (New map + status) beneath it.
+    const board = renderBoard();
+    gamePanel.appendChild(board);
+
+    const s = game.state;
+    // Outcome overlay: dramatic stylized text over the board itself (NOT the
+    // status line — score/outcome are dropped from there, since the policy
+    // never actually considers score). 'dead' -> Defeat, 'win' -> Victory,
+    // 'left' -> Escape (climbed out without the gold — survived, but no win).
+    if (s.done) {
+      const OUTCOME_TEXT = { win: 'Victory', left: 'Escape', dead: 'Defeat' };
+      const overlay = document.createElement('div');
+      overlay.className = 'outcome-overlay outcome-' + s.outcome;
+      overlay.textContent = OUTCOME_TEXT[s.outcome];
+      board.appendChild(overlay);
+    }
 
     const bar = document.createElement('div');
     bar.className = 'toolbar';
@@ -581,17 +1018,160 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const status = document.createElement('span');
     status.className = 'status';
-    const s = game.state;
-    const ended = s.done ? `  —  ${s.outcome.toUpperCase()}` : '';
     // The agent's INFERRED belief about the Wumpus (not the game's truth).
     const wa = beliefs.wumpusAlive;
     const wumpus = wa === 'NO' ? 'dead' : wa === 'YES' ? 'alive' : '?';
     const gold = beliefs.hasGold === 'NO' ? 'no' : beliefs.hasGold === 'YES' ? 'yes' : '?';
     status.textContent =
-      `Score ${s.points} | gold (agent): ${gold} | arrow: ${s.hasArrow ? 'yes' : 'no'} | ` +
-      `wumpus (agent): ${wumpus} | at (agent): ${beliefs.location || '?'}${ended}`;
+      `Level: ${lastSeed} | gold: ${gold} | arrow: ${s.hasArrow ? 'yes' : 'no'} | ` +
+      `wumpus: ${wumpus} | at: ${beliefs.location || '?'}`;
     bar.appendChild(status);
+
+    // Reset: replay the CURRENT map from scratch (same seed), on the opposite
+    // side of the status text from New Map — for re-driving a problem map
+    // step by step to watch a policy decision (e.g. when the arrow fires).
+    const reset = document.createElement('button');
+    reset.className = 'new-map-btn';
+    reset.textContent = 'Reset';
+    reset.addEventListener('click', resetGame);
+    bar.appendChild(reset);
+
+    // Load Map: prompt for an explicit seed and replay that map. Lets a
+    // problem map (its seed read off "Level: …") be reloaded after a page
+    // refresh — e.g. to pick up a logic.js/worker.js fix and re-test the
+    // exact same layout, without needing the URL round-trip.
+    const loadMap = document.createElement('button');
+    loadMap.className = 'new-map-btn';
+    loadMap.textContent = 'Load Map';
+    loadMap.addEventListener('click', () => {
+      const input = prompt('Enter a level seed to load:', lastSeed ?? '');
+      if (input === null) return;                    // cancelled
+      const n = Number(input);
+      if (!Number.isFinite(n)) { alert('Not a valid seed number.'); return; }
+      startGame(n >>> 0);
+    });
+    bar.appendChild(loadMap);
+
     gamePanel.appendChild(bar);
+  }
+
+  // Static prose for the About tab. User-facing text calls a board square a
+  // "room" throughout (code/comments elsewhere still say "cell" or "room"
+  // interchangeably — that's fine internally, but the student-facing copy
+  // should be consistent).
+  function renderAboutTab() {
+    const el = document.createElement('div');
+    el.className = 'tab-content prose';
+    el.innerHTML = `
+      <h3>The Wumpus World</h3>
+
+      <p>The Wumpus World is a classic test bed for logical agents, from Russell &amp; Norvig's <em>Artificial Intelligence: A Modern Approach</em>. A brave hero explores a grid of rooms looking for gold, while trying not to die. Two hazards lurk in the dungeon: bottomless <strong>pits</strong> into which the hero can fall and a single <strong>Wumpus</strong> who is ready to eat the hero on sight. Entering into a room with either a pit or the Wumpus means certain death and the end of the game.</p>
+
+      <p>Unfortunately, the hero can't see these hazards directly (until it is too late). The hero must infer them from <strong>percepts</strong>. A <strong>breeze</strong> means a pit is in an adjacent room; a <strong>stench</strong> means the Wumpus is in an adjacent room; a <strong>glitter</strong> means gold is in the current room. Two rooms are adjacent if one is immediately north (up), south (down), east (right), or west (left) of the other.</p>
+      
+      <p>The hero also carries a single <strong>arrow</strong>, which he can fire in a straight line down a row or column to kill the Wumpus (a <strong>scream</strong> percept confirms a hit). The hero's primary goal: grab the gold and climb back out through the entrance at room (1,1). If the gold cannot be reached, the hero must be content to escape the dungeon alive. In this visualization, you will have the opportunity to both control the hero and to observe how a logical agent would navigate the Wumpus World.</p>
+
+      <h3>Logical agents</h3>
+      <p>A <strong>logical agent</strong> doesn't guess — it demands certainty. It maintains a <strong>knowledge base</strong> (KB) of logical sentences — facts it has sensed, actions it has taken, and general rules about how the world works (e.g. "a room is breezy if and only if a neighboring room has a pit"). It only commits to a belief once that belief is <strong>logically entailed</strong> by the KB. This means that it is impossible for the new belief, or <strong>inference</strong>, to be false given what the agent already knows. To check this, the agent uses the <strong>resolution algorithm</strong> to check whether there is any way a candidate inference could be false if the statements in its knowledge base are true. This process of inference-checking is called a <strong>query</strong> and the agent poses queries using the <strong>ASK</strong> operation.</p>
+      <p>After each move, the agent will determine its current location and record any percepts that it perceives. It then poses a series of queries to answer important questions (e.g., is there a pit in the room to the north). Using this information, the agent follows a simple decision tree for determining what to do next.</p>
+      <p>The benefit of this approach is that the agent never takes risks: it never steps into a room unless it has actually proven that room safe, so it never dies. The cost is that proof is conservative — a room the agent merely <em>suspects</em> is safe (or unsafe), without proof, is treated exactly like a room it knows is dangerous. A logical agent that only ever acts on proof will sometimes leave gold behind, or explore less efficiently than an agent willing to guess.</p>
+
+      <h3>Behind the scenes: making resolution work in practice</h3>
+      <p>Textbook resolution is simple to describe and painfully slow to run as-is. It works by translating the agent's knowledge base and negated query into a set of clauses that it compares to one another, looking for new inferences and (ultimately) contradictions. If a contradiction is found, that means that it's impossible for the query to be false (hence, the negation) if the KB is true. If no contradiction is found — despite all possible inferences being made — then it is possible for the KB to be true and the query false.</p>
+
+      <p>The problem with resolution is that it has no way to determine which clauses from its KB are relevant to the current query. For example, there is no direct relationship between pits/breeze rules and Wumpus/stench rules. That is, inferences about pits and inferences about Wumpuses will depend on distinct subsets of clauses from the KB. This means that resolution might spend a long time comparing irrelevant clauses and making irrelevant inferences before a contradiction is found. Worse, when no contradiction is present, the number of potential inferences resolution must explore can be truly vast.</p>
+
+      <p>Getting this project's resolution algorithm to answer in real time — while still showing an honest, complete proof — required several deliberate shortcuts. Each trades away some generality for speed, in a way that's sound for <em>this specific game</em> but would need re-justifying in a different domain.</p>
+      <ul>
+        <li><strong>Anchoring and component separation.</strong> Most of the KB is facts and rules about specific rooms. A question about room (3,4) almost never needs to reason about room (1,1)'s rules at all — so before resolution starts, the agent filters the KB down to only the clauses that are actually reachable from the query by a chain of shared symbols (and, for rules that are anchored to a specific room, only when that room has actually been visited). This keeps every individual proof small, at the cost of re-filtering on every question rather than reusing one global proof.</li>
+        <li><strong>Pure symbol elimination.</strong> A single symbol that appears with only one polarity across the filtered clause set (always negated, or never negated) can never be the pivot of a resolution step — resolution needs a complementary pair (one negated, one not negated). Clauses that only contain such symbols are dropped before the real search begins, since they can't contribute to a contradiction either way.</li>
+        <li><strong>Unit subsumption.</strong> A known single-symbol fact (or "unit clause") can be used to immediately simplify any clause in which its complement appears. Applying this aggressively first — like a very restricted, fast pre-pass — shrinks the clause set before the general (much more expensive) resolution loop has to run at all.</li>
+        <li><strong>No general cardinality axioms.</strong> R&amp;N's formulation can express facts like "exactly one Wumpus exists" as a family of clauses ruling out every pair of rooms both holding a Wumpus — sound, but expensive to state and use in general. This project instead hand-derives the one narrow, sound consequence of "there is exactly one Wumpus" the game actually needs: <strong>triangulation</strong>. If two rooms on a shared diagonal are both stenchy, the Wumpus must be in one of their (exactly two) common neighboring rooms — a disjunction that collapses to certainty once one candidate room is independently ruled out (typically by being visited safely). This is far cheaper than a general cardinality theory, but it is also far less general: it only knows what it was specifically built to know, and would not, by itself, generalize to "two Wumpuses" or a differently-shaped board without rewriting the rule.</li>
+        <li><strong>Situation calculus.</strong> Formally tracking how facts change over time (whether the agent still has the arrow, where it believes it is, whether the Wumpus is still alive) calls for the full successor-state-axiom machinery of situation calculus. This project uses a lighter-weight version in two ways. First, not everything is actually time-indexed: Breezy and Stenchy are room properties that never change once the map is generated, so they are asserted as plain, untimed facts (<code>Breezy(x,y)</code>) rather than fluents (<code>Breezy(x,y,t)</code>) — only the genuinely dynamic facts (the arrow, the agent's location, whether the Wumpus is alive, whether gold is held) get the full time-indexed treatment. Second, each of those time-varying facts is tracked as a single "current value," proven fresh via one resolution step from the previous step's already-proven value, rather than re-deriving the entire history from time zero every turn.</li> 
+        <li><strong>Dynamic Knowledge Base.</strong>The KB doesn't let old time-indexed axioms pile up or generate axioms for time steps arbitrarily far into the future. At the start of each step, every axiom timestamped strictly before the current time is <strong>retired</strong> (deleted) from the knowledge base and replaced by new axioms. A short list of exceptions is kept regardless of age — the agent's believed location history and the record of actions actually taken — because later reasoning (e.g. "was I ever in the room with the gold") needs to refer back to them. This keeps the KB's temporal layer bounded in size rather than growing every turn, at the cost of a KB that can no longer answer new questions about the past or future.</li>
+        <li><strong>Unit resolution, where applicable.</strong> Unit subsumption (above) is a preprocessing pass; unit resolution is different — it's a restricted MODE of the search itself, allowing a resolution step only when at least one of the two clauses being combined is already a unit clause (a single literal). This is sound but not complete in general: a full, unrestricted search can prove true things a unit-only search cannot. This project accepts that incompleteness for a specific slice of queries — the gold and self-location fluents — because their supporting rules happen to share atoms with the location-tracking machinery, which would otherwise merge everything into one large component that full resolution saturates expensively. The game maintains only a single believed location for each time step — there is no positional uncertainty to reason about — which guarantees these particular facts are always provable by unit resolution alone, so restricting to it there costs nothing in what can be proven, while sidestepping the expensive general search entirely.</li>
+      </ul>
+      <p>None of these shortcuts change <em>what</em> the agent can correctly conclude in this game — every one was chosen because it is sound for the Wumpus World specifically. But that "specifically" matters: this is not a general-purpose theorem prover, and the corners cut to make it fast here would need to be reconsidered for a differently-shaped problem. This is a familiar tradeoff in computer science. Optimization requires us to leverage our knowledge of the target domain in order to improve performance.</p>`;
+    return el;
+  }
+
+  // Static prose + reference diagram for the How To tab.
+  function renderHowToTab() {
+    const el = document.createElement('div');
+    el.className = 'tab-content prose';
+    el.innerHTML = `
+      <h3>Manual vs. Automatic Modes</h3>
+      <p>The mode toggle at the bottom of the Controls panel switches who controls our hero. In <strong>Manual</strong> mode, you control the hero with the movement, shooting, and action buttons. In <strong>Automatic</strong> mode, the hero is controlled by a logical agent according to a set of simple rules, dynamically visualized in the <strong>Decision Rules</strong> tab. In both modes, the <strong>Knowledge Base</strong> panel updates to show you what the hero currently knows (note discussion of the "Dynamic Knowledge Base" under "About"). Similarly, in both modes, the <strong>Resolution</strong> tab updates to show what the hero has (or has not) proven about the world during the present turn.</p>
+      
+      <p>In addition to who selects the hero's actions, the two modes differ in how the dungeon is revealed. In Automatic mode, the logical agent automatically makes queries about hazards based on its current percepts. For example, if a breeze is detected, the agent will query whether the adjacent cells contain a pit. The logical agent also checks on the current status of fluents (parts of the world that can change), including whether the agent has the arrow, whether the agent has the gold, whether the agent is where they expected to be given their last movement, and whether the Wumpus is alive. In Manual mode, these fluent checks are still automatic, but the user is responsible for making queries about hazards and percepts. The only way a hazard or percept can be revealed in Manual mode (apart from visiting a room and taking your chances) is by proving the presence or absence of that hazard via a query made using the <strong>Ask</strong> panel. The only exception to this is that inferences about the Wumpus based on arrow shots remain automatic.</p>
+      
+      <h3>Reading the Rooms</h3>
+      <p>Each room is divided into five regions, one per fact the hero can learn about that room. Fog covers a region until that specific fact is settled, whether (i) by walking into the room (which reveals everything at once) or (ii) by the agent proving it through inference (whether automatically or via the Ask panel). Once revealed, a region shows either the matching icon (the fact is true) or nothing (the fact is false).</p>
+      <div class="howto-diagram">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="1" y="1" width="98" height="98" fill="none" stroke="#5a3e10" stroke-width="1.5"/>
+          <g fill="none" stroke="#5a3e10" stroke-width="1">
+            <polygon points="50,25 75,50 50,75 25,50"/>
+            <line x1="0" y1="50" x2="25" y2="50"/>
+            <line x1="50" y1="0" x2="50" y2="25"/>
+            <line x1="100" y1="50" x2="75" y2="50"/>
+            <line x1="50" y1="75" x2="50" y2="100"/>
+          </g>
+        </svg>
+        <!-- Five hoverable regions, positioned over the skeleton above (same
+             0-100 coordinate space, as percentages). Each shows its label by
+             default and swaps to the REAL in-game glyph on hover — the same
+             assets/generators renderCell uses, not a redrawn approximation. -->
+        <div class="howto-region" id="howto-region-breeze" style="left:0; top:0; width:50%; height:50%;">
+          <span class="howto-region-label">Breeze</span>
+          <div class="howto-region-glyph"></div>
+        </div>
+        <div class="howto-region" id="howto-region-gold" style="left:50%; top:0; width:50%; height:50%;">
+          <span class="howto-region-label">Gold</span>
+          <div class="howto-region-glyph"><img src="artcandidates/hoard-09-heaped-pile.svg" alt="gold"></div>
+        </div>
+        <div class="howto-region" id="howto-region-pit" style="left:25%; top:25%; width:50%; height:50%;">
+          <span class="howto-region-label">Pit</span>
+          <div class="howto-region-glyph"></div>
+        </div>
+        <div class="howto-region" id="howto-region-wumpus" style="left:50%; top:50%; width:50%; height:50%;">
+          <span class="howto-region-label">Wumpus</span>
+          <div class="howto-region-glyph"><img src="artcandidates/wumpus-02-menacing-brows.svg" alt="wumpus"></div>
+        </div>
+        <div class="howto-region" id="howto-region-stench" style="left:0; top:50%; width:50%; height:50%;">
+          <span class="howto-region-label">Stench</span>
+          <div class="howto-region-glyph"><img src="artcandidates/glyph-stench.svg" alt="stench"></div>
+        </div>
+      </div>
+      <p>A room's torch lights once you've visited it. The entrance room, (1,1), features a ladder against its south wall, which is the only place the hero can climb out of the dungeon.</p>
+
+      <h3>Making Queries</h3>
+      <p>The Ask panel lets you pose a query directly. This is helpful for confirming (or disconfirming) your hunches in manual mode. It is also the only way of manually clearing fog from Wumpus, Pit, or percept positions before entering a room. A query is built by clicking, not typing: choose one of the four atom buttons (Breeze, Stench, Pit, Wumpus), optionally toggle <strong>¬</strong> to negate it, then click a room on the map to fill in its coordinates. The query text at the top of the panel shows the result so far — in red with underscores for the missing coordinates while incomplete, in normal text once all three parts (atom, ¬, room) are set. <strong>Clear</strong> empties the builder; <strong>Submit</strong> (grayed out until the query is complete) sends it to the resolution algorithm for testing against the knowledge base.</p>
+      <p>Submitting runs the exact same resolution proof the logical agent runs automatically, and the steps appear in the Resolution panel like any other. You may submit your own queries in manual mode or in automatic mode (if advancing the logical agent using the <strong>step</strong> button). A submitted query is highlighted so you can tell it apart from the logical agent's automatic queries. If the proof settles the question one way or the other, that fact is recorded permanently: the corresponding region's fog clears on the map, just as if the agent had proven it during its own turn. If resolution can't settle it — not enough is known yet — nothing changes, and you can always try again once more of the map has been explored.</p>
+
+      <h3>Controls</h3>
+      <ul>
+        <li><strong>Move (N/E/S/W)</strong> — step the hero one room in that direction, if there's no wall in the way. Keyboard: arrow keys.</li>
+        <li><strong>Shoot (N/E/S/W)</strong> — fire the arrow in a straight line down the current row or column. Remember, our hero has only brought a single arrow, and the game tracks whether it's already been spent. Keyboard: W/A/S/D (W = north, D = east, S = south, A = west).</li>
+        <li><strong>Grab</strong> — pick up the gold, if any is in the current room. Keyboard: G.</li>
+        <li><strong>Climb</strong> — attempt to leave the dungeon. Remember, the only exit is in the entrance room, (1,1). Leaving the dungeon ends the game (win or otherwise). Keyboard: C.</li>
+        <li><strong>Manual / Automatic</strong> — the mode toggle described above.</li>
+        <li><strong>Run</strong> — have the logical agent complete a full run (useful for assessing the automatic agent's performance).</li>
+        <li><strong>Step</strong> — have the logical agent complete one turn (useful for understanding the automatic agent's behavior) </li>
+        <li><strong>New Map</strong> — generate a fresh randomized dungeon.</li>
+        <li><strong>Reset</strong> — replay the <em>current</em> dungeon from scratch (same seed or "Level"), useful for re-watching a specific decision.</li>
+        <li><strong>Load Map</strong> — load a dungeon by its seed number (shown as "Level: …" in the status line), so a specific map can be reproduced later.</li>
+      </ul>`;
+
+    // The Breeze/Pit glyphs are live-generated DOM (randomized wind arcs —
+    // see makeBreeze/makePit), so they can't be embedded in the innerHTML
+    // string above; append them here instead. Gold/Wumpus/Stench are plain
+    // <img> tags already in the string (the same asset files renderCell
+    // uses), so nothing further is needed for those.
+    el.querySelector('#howto-region-breeze .howto-region-glyph').appendChild(makeBreeze());
+    el.querySelector('#howto-region-pit .howto-region-glyph').appendChild(makePit());
+
+    return el;
   }
 
   // ---- knowledge base (kb panel) ----------------------------------------
@@ -646,7 +1226,29 @@ document.addEventListener('DOMContentLoaded', () => {
      levels build their contents lazily on first open — a single ask can carry
      thousands of resolvents, so we don't put them in the DOM until asked. */
   function renderSolver() {
-    solverPanel.innerHTML = '<h2>Resolution</h2>';
+    // The tab bar IS the panel's title bar — "Resolution" is just the
+    // default-selected tab, not a separate fixed heading above the tabs.
+    solverPanel.innerHTML = '';
+
+    // Decision Rules watches the AUTOMATIC policy step through its rule list —
+    // meaningless in Manual mode (the user picks actions directly, no policy
+    // runs), so the tab is disabled there and the panel falls back to
+    // Resolution regardless of which tab was last selected.
+    const decisionRulesDisabled = mode !== 'automatic';
+    if (decisionRulesDisabled && resolverTab === 'decisionRules') resolverTab = 'resolution';
+
+    solverPanel.appendChild(renderTabBar(
+      [
+        { key: 'resolution',    label: 'Resolution' },
+        { key: 'decisionRules', label: 'Decision Rules', disabled: decisionRulesDisabled,
+          disabledReason: 'Only available in Automatic mode' },
+      ],
+      resolverTab,
+      (key) => { resolverTab = key; renderSolver(); },
+    ));
+
+    if (resolverTab === 'decisionRules') { solverPanel.appendChild(renderDecisionRulesTab()); return; }
+
     const scroll = document.createElement('div');
     scroll.className = 'solver-scroll';
 
@@ -692,6 +1294,73 @@ document.addEventListener('DOMContentLoaded', () => {
     solverPanel.appendChild(scroll);
   }
 
+  // Canonical rule list (labels mirror the `record(...)` calls in logic.js
+  // policyAction, in order) — used to show ALL 11 rules every turn, even the
+  // ones a short-circuited trace never reached. Keep in sync with that
+  // function's docstring/record() calls if the policy changes.
+  const POLICY_RULES = [
+    { rule: 1, label: 'If gold in current room, grab.' },
+    { rule: 2, label: 'Elif carrying gold AND at (1,1), climb.' },
+    { rule: 3, label: 'Elif carrying gold, go toward (1,1).' },
+    { rule: 4, label: 'Elif Wumpus known AND can shoot Wumpus, shoot.' },
+    { rule: 5, label: 'Elif Wumpus known, go toward nearest safe firing position.' },
+    { rule: 6, label: 'Elif adjacent unvisited safe room exists, go to it.' },
+    { rule: 7, label: 'Elif unvisited safe room exists, go toward it.' },
+    { rule: 8, label: 'Elif not at (1,1), step toward (1,1).' },
+    { rule: 9, label: 'Else climb out.' },
+  ];
+
+  /* The automatic policy's rule-by-rule trace (see logic.js policyAction),
+     from the latest 'decision' reply — a Run/Step in automatic mode requests
+     one every turn. ALL rules are always listed, in order, so a student can
+     read the whole policy before ever running it; a red X marks each rule
+     the trace reached and rejected, a green check marks the one that fired
+     (with the action it chose). Before any decision this turn — or before
+     the very first one — every rule is simply unmarked (lastPolicyTrace is
+     null; treated the same as an empty trace: nothing reached yet). */
+  function renderDecisionRulesTab() {
+    const el = document.createElement('div');
+    el.className = 'tab-content decision-rules';
+
+    const byRule = new Map((lastPolicyTrace || []).map(t => [t.rule, t]));
+
+    const list = document.createElement('ol');
+    list.className = 'decision-rule-list';
+    for (const r of POLICY_RULES) {
+      const t = byRule.get(r.rule);   // undefined if never reached this turn
+      const li = document.createElement('li');
+      li.className = 'decision-rule' +
+        (t ? (t.matched ? ' matched' : ' rejected') : ' unreached');
+
+      const mark = document.createElement('span');
+      mark.className = 'decision-rule-mark';
+      mark.textContent = t ? (t.matched ? '✓' : '✗') : '☐';   // unreached: empty checkbox
+      li.appendChild(mark);
+
+      const num = document.createElement('span');
+      num.className = 'decision-rule-num';
+      num.textContent = r.rule + '.';
+      li.appendChild(num);
+
+      const label = document.createElement('span');
+      label.className = 'decision-rule-label';
+      label.textContent = r.label;
+      li.appendChild(label);
+
+      // Always present (even unmatched) so the row's layout — and therefore
+      // where the label wraps — never changes the moment a rule fires; only
+      // its text differs.
+      const action = document.createElement('span');
+      action.className = 'decision-rule-action';
+      action.textContent = (t && t.matched) ? '→ ' + t.action : '';
+      li.appendChild(action);
+
+      list.appendChild(li);
+    }
+    el.appendChild(list);
+    return el;
+  }
+
   /* The preprocessing pipeline: the clause set after each filter stage, shown
      above the resolution steps so a student can watch the input shrink before
      resolution proper begins. Each is a collapsible section listing its clauses,
@@ -701,8 +1370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pp = ask.preprocessing;
     if (!pp) return;
     const stages = [
-      { key: 'input',       title: 'Input',            note: 'filtered by anchor + component separation' },
-      { key: 'pureSymbol',  title: 'Pure Symbol',      note: 'after pure-symbol elimination' },
+      { key: 'input',       title: 'Anchoring and Component Separation', note: 'filtered by anchor + component separation' },
+      { key: 'pureSymbol',  title: 'Pure Symbol Elimination', note: 'after pure-symbol elimination' },
       { key: 'subsumption', title: 'Unit Subsumption', note: 'after unit subsumption' },
     ];
     for (const s of stages) {
@@ -880,7 +1549,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modeToggle = document.createElement('div');
     modeToggle.className = 'mode-toggle';
-    for (const [name, value] of [['Manual', 'manual'], ['Automatic', 'automatic']]) {
+    for (const [name, value] of [['Automatic', 'automatic'], ['Manual', 'manual']]) {
       const b = document.createElement('button');
       b.className = 'mode-btn' + (mode === value ? ' active' : '');
       b.textContent = name;
@@ -889,7 +1558,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const runStep = document.createElement('div');
-    runStep.className = 'run-step';
+    // Grayed out (like the manual pad in automatic mode) until Automatic is
+    // selected — Run/Step do nothing in Manual mode, so they should read as
+    // visibly inert, not just individually disabled.
+    runStep.className = 'run-step' + (mode !== 'automatic' ? ' disabled' : '');
 
     // Run/Stop toggle: label + handler reflect whether a run is active. Enabled
     // only in automatic mode (and, for starting, when the game isn't over). A
@@ -918,15 +1590,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* Switch drive mode. Grays the manual pad in automatic mode (see renderControls).
-     Leaving automatic while a run is active stops it. (Withholding the automatic
-     sweep in manual mode is a later step.) */
+     Leaving automatic while a run is active stops it.
+
+     Manual mode withholds automatic frontier inference (sweep's autoInfer:false
+     — see worker.js), so the agent's `determined` cache can be stale for the
+     POLICY when the user switches to automatic mid-game: policyAction() reads
+     `determined` to decide which cells are safe, and a cell the user actually
+     visited but never proved via ASK reads as unsafe, sending the agent
+     straight back to (1,1) (rule 9) instead of exploring it. Fix: on entering
+     automatic, force one resync sweep (autoInfer:true, no world change) before
+     any Run/Step can fire, so the cache is caught up to everything now provable
+     from percepts gathered so far. */
   function setMode(next) {
     if (next === mode) return;
     mode = next;
     // Leaving automatic cancels any run AND any in-flight single step, so a
     // pending 'decision' reply can't apply a stray auto-action in manual mode.
     if (mode !== 'automatic') { if (running) stopRun(); stepping = false; }
+    else if (game && !game.state.done) {
+      resyncAgent();
+      agentSwept = true;   // this resync covers the same catch-up requestDecision/stepOnce do
+    }
     renderControls();
+  }
+
+  // Re-sweep the worker's agent with autoInfer:true and no world change. Locks
+  // input (like doAction) so a Run/Step click can't race ahead of the reply.
+  function resyncAgent() {
+    setBusy(true);
+    worker.postMessage({ type: 'resync', gen, mode });
   }
 
   // ---- automatic Run loop ----------------------------------------------
@@ -953,8 +1645,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Ask the worker what the policy would do next (reply arrives as 'decision').
+  // If the agent hasn't been swept with inference yet this game (true by
+  // default — see agentSwept), catch it up first via the same resync used
+  // for a Manual->Automatic mode switch; requestDecisionAfterSync (below)
+  // fires the real decide request once that catch-up 'done' reply lands.
   function requestDecision() {
     if (!running) return;
+    if (!agentSwept) { pendingAutoDecision = true; resyncAgent(); return; }
     worker.postMessage({ type: 'decide', gen });
   }
 
@@ -966,11 +1663,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Single automatic Step: one policy action, no loop. Ignored while a run is
      active, a step is already in flight, inference is pending, the game is over,
      or we're not in automatic mode. The 'decision' reply applies it (stepping is
-     set), and 'done' clears the flag. */
+     set), and 'done' clears the flag. Mirrors requestDecision's catch-up sync
+     for an agent that hasn't been swept with inference yet this game. */
   function stepOnce() {
     if (running || stepping || inferring || mode !== 'automatic' || game.state.done) return;
     stepping = true;
     renderControls();                    // reflect the in-flight step (disable buttons)
+    if (!agentSwept) { pendingAutoDecision = true; resyncAgent(); return; }
     worker.postMessage({ type: 'decide', gen });
   }
 
@@ -1084,5 +1783,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderControls();
   renderAsk();
-  newGame();
+  startInitialGame();
 });

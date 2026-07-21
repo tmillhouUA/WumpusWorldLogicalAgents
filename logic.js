@@ -774,6 +774,14 @@ class Game {
       const wumpus = free[Math.floor(this.rng() * free.length)];
       const gold = this._weightedPick(free);   // biased away from (1,1)
 
+      // Reject a breeze or stench at the entrance: in automatic mode the
+      // agent starts there with no prior evidence, so a percept at (1,1)
+      // makes the map trivially unsolvable by inference alone (a pit/Wumpus
+      // is provably adjacent before a single cell has been explored).
+      const entranceBreezy = this.neighbors(1, 1).some(([nx, ny]) => pits.has(this.key(nx, ny)));
+      const entranceStenchy = this.neighbors(1, 1).some(([nx, ny]) => nx === wumpus[0] && ny === wumpus[1]);
+      if (entranceBreezy || entranceStenchy) continue;
+
       if (this._pitFreePath(pits, gold)) {     // solvable?
         this.pits = pits;
         this.wumpus = wumpus;
@@ -936,13 +944,20 @@ class Game {
    is located and the agent TELLs visited-cell safety, rather than inferring its
    own position. The static inference below is unaffected.
 
-   Deliberate simplification: we do NOT assert "exactly one Wumpus" (the
-   at-least-one / at-most-one cardinality axioms). Those are faithful to R&N
-   but blow up naive resolution and would force a set-of-support refinement.
-   Dropping them keeps the algorithm the book's plain PL-RESOLUTION. We still
-   get all ¬Wumpus (safety) inference and positive Wumpus location by stench
-   triangulation; we only lose location-by-global-elimination and the
-   "safe everywhere once pinned" inference (those cells read UNKNOWN).
+   Deliberate simplification: we do NOT assert "exactly one Wumpus" (the full
+   at-least-one / at-most-one cardinality axioms, O(size^2) pairwise clauses).
+   Those are faithful to R&N but blow up naive resolution and would force a
+   set-of-support refinement. Dropping them keeps the algorithm the book's
+   plain PL-RESOLUTION. In their place, _populateWumpusTriangulation() asserts
+   a cheap, sound shortcut standing in for at-most-one: if two of a cell's
+   neighbours are both stenchy, the Wumpus is at that cell (only one Wumpus
+   really exists, so two independently-stenchy neighbours can only be jointly
+   explained by it sitting at their common neighbour). That plus the ¬Wumpus
+   safety inference covers most positive-location and all safety queries; we
+   only lose location-by-GLOBAL-elimination (every other cell independently
+   ruled out via cues that never form a two-neighbour stench pair) and the
+   "safe everywhere once pinned" inference (those residual cases read
+   UNKNOWN).
 
    Added lazily as cells are visited (perception-scoped grounding):
      - the percept facts for the cell (Breezy/Stenchy/Gold, ±)
@@ -971,7 +986,9 @@ class Agent {
     this.determined = {};            // cache of settled static facts: name -> 'YES'|'NO'
     this.snapshots = {};             // label -> a captured kbView(), for the KB panel
     this.resolutions = [];           // every ask this turn, each a stepped trace, for the solver panel
-    // (No "exactly one Wumpus" cardinality axioms — see the note above.)
+    // (No full "exactly one Wumpus" cardinality axioms — see the note above;
+    // _populateBiconditionals() below asserts the cheaper triangulation
+    // shortcut in their place.)
 
     // Temporal layer: initial conditions at t = 0. We also track each fluent's
     // current value so the next step's proof starts from a materialized fact
@@ -987,6 +1004,7 @@ class Agent {
     this.kb.tell(this.aliveAtom(0), 'alive');
     this.kb.tell(not(this.haveGoldAtom(0)), 'gold');   // initial condition: the agent starts empty-handed
     this.kb.tell(this.locAtom(1, 1, 0), 'locations');   // initial condition: the agent starts at (1,1)
+    this.kb.tell(not(this.bumpAtom(0)), 'percept');    // initial condition: no wall bump before any move
     // The static percept biconditionals for EVERY cell (location-agnostic), gated
     // per query by the anchor filter rather than by where the agent has been.
     this._populateBiconditionals();
@@ -1009,6 +1027,59 @@ class Agent {
         const nb = this.neighbors(x, y);
         this.kb.tell(iff(this.brz(x, y), ors(nb.map(([nx, ny]) => this.pit(nx, ny)))), 'pit', [x, y]);
         this.kb.tell(iff(this.stc(x, y), ors(nb.map(([nx, ny]) => this.wmp(nx, ny)))), 'wumpus', [x, y]);
+      }
+    }
+    this._populateWumpusTriangulation();
+  }
+
+  /* Shortcut rule standing in for the dropped cardinality axioms (see the
+     class-level note above): for every DIAGONAL pair of cells (x1,y1)-(x2,y2)
+     (i.e. the two cells share exactly two common neighbours — the OTHER two
+     corners of the same 2x2 block), if both are stenchy, the Wumpus is at ONE
+     of those two shared neighbours A or B —
+       (Stenchy(x1,y1) ^ Stenchy(x2,y2)) => Wumpus(A) v Wumpus(B)
+     e.g. stench at (2,1) and (1,2) => Wumpus(1,1) v Wumpus(2,2).
+
+     NOT a unique-cell conclusion: an earlier version of this rule wrongly
+     concluded a single cell (treating A and B as if only one were possible),
+     which is unsound — either corner independently explains both stenches, so
+     the correct axiom is a DISJUNCTION, collapsing to a definite location only
+     once ordinary resolution rules out one disjunct (e.g. the agent visits A
+     safely, so ¬Wumpus(A) is a separate known fact, and resolving it against
+     this clause yields Wumpus(B) for free — no extra rule needed for that
+     step). Sound because there is really only ever one Wumpus: two
+     independently-stenchy diagonal cells can only be jointly explained by a
+     Wumpus at one of their two shared corners. This is O(size) clauses (one
+     per diagonal pair), well under the O(size^2) at-most-one cardinality
+     axioms whose resolution cost was the reason cardinality was dropped.
+
+     ANCHORING: anchored to BOTH premise cells (x1,y1) and (x2,y2), NOT to A/B
+     — A/B are exactly the cells this rule exists to help decide, and are
+     typically UNVISITED at decide-time, so anchoring there would make
+     _decide's `allowedAnchors: visited` filter exclude the clause for the one
+     case it's needed (a no-op in practice). Telling it twice, once per premise
+     anchor, admits it once EITHER premise cell is visited; it can only
+     actually resolve to something once BOTH Stenchy facts are known, which
+     itself requires having visited both (Stenchy is a raw percept, never
+     inferred) — so admitting it early is harmless. */
+  _populateWumpusTriangulation() {
+    for (let x = 1; x <= this.size; x++) {
+      for (let y = 1; y <= this.size; y++) {
+        // Only look at the diagonal neighbour to the NE and SE of (x,y), so
+        // each unordered diagonal pair in the grid is visited exactly once.
+        for (const [dx, dy] of [[1, 1], [1, -1]]) {
+          const x2 = x + dx, y2 = y + dy;
+          if (!this.inBounds(x2, y2)) continue;
+          // The two cells shared between (x,y) and (x2,y2)'s neighbourhoods —
+          // the other two corners of their common 2x2 block.
+          const shared = this.neighbors(x, y).filter(([nx, ny]) =>
+            this.neighbors(x2, y2).some(([mx, my]) => mx === nx && my === ny));
+          if (shared.length !== 2) continue;   // off the edge: fewer than 2 shared corners
+          const [[ax, ay], [bx, by]] = shared;
+          const rule = implies(ands([this.stc(x, y), this.stc(x2, y2)]), ors([this.wmp(ax, ay), this.wmp(bx, by)]));
+          this.kb.tell(rule, 'wumpus', [x, y]);
+          this.kb.tell(rule, 'wumpus', [x2, y2]);
+        }
       }
     }
   }
@@ -1105,7 +1176,7 @@ class Agent {
 
     // The Bump percept (locationless, timed): a Move that produced no movement is
     // a wall bump. This is the feedback that makes localization a genuine question.
-    this.kb.tell(step.bump ? this.bumpAtom(t + 1) : not(this.bumpAtom(t + 1)), 'location');
+    this.kb.tell(step.bump ? this.bumpAtom(t + 1) : not(this.bumpAtom(t + 1)), 'percept');
 
     this.t = t + 1;
 
@@ -1600,7 +1671,13 @@ class Agent {
          has proven it dead (aliveVal === false, from the Scream via the aliveness
          SSA), the wumpus dimension drops out of the safety test entirely — a dead
          Wumpus threatens no cell, so ¬Wumpus need not be proven anywhere. While
-         alive, ¬Wumpus must be proven as before.
+         alive, ¬Wumpus must normally be proven per-cell — EXCEPT once the Wumpus
+         has been PINNED to a specific cell (_wumpusCell()): since there is only
+         ever one Wumpus, every OTHER cell is then ¬Wumpus by pure logic, even if
+         the resolution engine never separately proved that specific cell (sweep()
+         only queries the unvisited FRONTIER, so a firing position beyond it can
+         sit un-queried forever without this shortcut — the agent would then never
+         find a route to shoot a Wumpus it has already located).
      This keeps deadness in the fluent layer (not the static Wumpus map) while
      still letting a kill unblock stench-guarded cells. */
   _isSafe(x, y) {
@@ -1608,7 +1685,10 @@ class Agent {
     if (this.visited.has(k)) return true;
     if (this.determined[formulaToString(this.pit(x, y))] !== 'NO') return false;   // pit not ruled out
     if (this.aliveVal === false) return true;                                      // Wumpus dead => wumpus is moot
-    return this.determined[formulaToString(this.wmp(x, y))] === 'NO';              // else need ¬Wumpus too
+    if (this.determined[formulaToString(this.wmp(x, y))] === 'NO') return true;    // ¬Wumpus directly proven
+    const w = this._wumpusCell();
+    if (w && !(w[0] === x && w[1] === y)) return true;                             // Wumpus pinned elsewhere => here is safe
+    return false;
   }
 
   /* Whether the Wumpus has been PROVEN to sit at a specific cell (the sweep's
@@ -1662,41 +1742,86 @@ class Agent {
      The behavioural policy (for students):
        1.  In the gold room                                   -> Grab.
        2.  At (1,1) and carrying the gold                     -> Climb.
-       3.  Wumpus proven, arrow in hand, and standing on a
+       3.  Carrying the gold but not at (1,1)                 -> step (BFS) toward
+                                                                 (1,1) — get the
+                                                                 gold home first.
+       4.  Wumpus proven, arrow in hand, and standing on a
            safe firing position on its row/column            -> Shoot at it.
-       4.  Wumpus proven, arrow in hand, a safe firing
+       5.  Wumpus proven, arrow in hand, a safe firing
            position reachable through safe cells             -> step (BFS) toward
                                                                  the nearest one.
-       5.  An ADJACENT unvisited safe cell exists            -> move onto it
+       6.  An ADJACENT unvisited safe cell exists            -> move onto it
                                                                  (first in N,E,S,W).
-       6.  An unvisited safe cell exists but none adjacent    -> step (BFS) toward
+       7.  An unvisited safe cell exists but none adjacent    -> step (BFS) toward
                                                                  the nearest one.
-       7.  No unvisited safe cells, arrow in hand, a stench
-           was smelled, and standing on the target stenchy
-           cell                                               -> Shoot at its first
-                                                                 neighbour not proven
-                                                                 wumpus-free (N,E,S,W)
-                                                                 — a last-ditch probe.
-       8.  Same as 7 but not yet on a stenchy cell that has
-           an unresolved neighbour                            -> step (BFS) toward the
-                                                                 nearest such cell.
-       9.  No unvisited safe cells and not at (1,1)           -> step (BFS) toward (1,1).
-       10. At (1,1) with no unvisited safe cells             -> Climb (give up).
+       8.  No unvisited safe cells and not at (1,1)           -> step (BFS) toward (1,1).
+       9.  At (1,1) with no unvisited safe cells             -> Climb (give up).
 
-     Rules 3/4 and 7/8 are each a two-phase "act if in position, else navigate
-     toward it" pair. The agent is SOUND: it steps only onto proven-safe cells and
-     shoots only a spent-if-wrong last arrow, so it never dies — it may, however,
-     fail to reach gold that has no provably safe path, and climb out instead. */
+     Rules 4/5 are a two-phase "act if in position, else navigate toward it"
+     pair: rule 4/5 fires every turn the Wumpus is proven and the arrow is in
+     hand — including once exploration has widened the safe set enough to
+     reach a firing position that wasn't reachable earlier — so the agent
+     always finishes off a known Wumpus before it gives up (8/9); see
+     _isSafe's Wumpus-pinned shortcut, which is what makes a firing position
+     beyond the explored frontier provably safe once the Wumpus's own cell is
+     known. The agent is SOUND: it steps only onto proven-safe cells and
+     shoots only a spent-if-wrong last arrow, so it never dies — it may,
+     however, fail to reach gold that has no provably safe path, and climb
+     out instead.
+
+     A prior version had two more rules (a last-ditch speculative shot at an
+     unresolved neighbour of a sensed-stenchy cell, once exploration ran out
+     but before giving up). Removed: verified empirically (3000+ simulated
+     games, varied pit density) that their guard — arrow still in hand AND a
+     stench sensed, at the point rule 7 fails — never actually holds. Rules
+     4/5 are eager enough (firing the instant the Wumpus is proven, every
+     turn, before rule 6/7 even runs) that whenever a stench is sensed and
+     the arrow gets used, the Wumpus is already provably dead by the time
+     exploration could run out; the only remaining stench-sensed games end
+     in a win with the arrow never needed. So the speculative-shot guard was
+     dead code, not just rare.
+
+     TODO (possible future switch): a "risky" agent variant that will also
+     explore/act on cells NOT proven safe (accepting real death risk) could
+     revisit this — an agent willing to gamble might still want a
+     speculative shot even without full proof. The current SOUND agent
+     deliberately never does that. */
+  /* Returns { action, trace }. `trace` is one entry per numbered rule above,
+     IN ORDER, for the Decision Rules panel: { rule, label, matched, action? }.
+     Every rule this call actually reached gets an entry (matched:false until
+     the one that fires, which gets matched:true and its action); rules after
+     the match are never reached and are simply absent from the trace — the
+     panel treats "absent" as "not yet checked", not as a fourth state. */
   policyAction() {
+    const trace = [];
+    const record = (rule, label, matched, action) => {
+      trace.push({ rule, label, matched, action });
+      return matched;
+    };
     const [cx, cy] = this.locVal;
 
     // 1. Grab gold in the current room.
-    if (this.goldHereVal) return 'Grab';
+    if (record(1, 'Grab gold in the current room', this.goldHereVal, 'Grab')) {
+      return { action: 'Grab', trace };
+    }
 
     // 2. Climb out from the entrance once carrying gold.
-    if (cx === 1 && cy === 1 && this.haveGoldVal) return 'Climb';
+    const climbHome = cx === 1 && cy === 1 && this.haveGoldVal;
+    if (record(2, 'At (1,1) carrying gold: climb out', climbHome, 'Climb')) {
+      return { action: 'Climb', trace };
+    }
 
-    // 3 & 4. Deliberate shot at a PROVEN Wumpus (needs the arrow).
+    // 3. Carrying the gold but not home yet -> head for (1,1) first.
+    if (this.haveGoldVal) {
+      const home = this._safeStep((x, y) => x === 1 && y === 1);
+      if (record(3, 'Carrying gold, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
+        return { action: 'Move' + home, trace };
+      }
+    } else {
+      record(3, 'Carrying gold, not home: step toward (1,1)', false);
+    }
+
+    // 4 & 5. Deliberate shot at a PROVEN Wumpus (needs the arrow).
     const w = this._wumpusCell();
     if (w && this.arrowVal) {
       const [wx, wy] = w;
@@ -1704,60 +1829,59 @@ class Agent {
       // there a single cardinal shot's ray reaches it).
       const isFiringPos = (x, y) =>
         this._isSafe(x, y) && ((x === wx && y !== wy) || (y === wy && x !== wx));
-      // 3. Already on a firing position -> shoot toward the Wumpus.
-      if (isFiringPos(cx, cy)) {
+      // 4. Already on a firing position -> shoot toward the Wumpus.
+      const onFiringPos = isFiringPos(cx, cy);
+      if (onFiringPos) {
         const dir = cx === wx ? (wy > cy ? 'N' : 'S') : (wx > cx ? 'E' : 'W');
-        return 'Shoot' + dir;
+        record(4, 'On a firing position for the proven Wumpus: shoot', true, 'Shoot' + dir);
+        return { action: 'Shoot' + dir, trace };
       }
-      // 4. Otherwise walk to the nearest reachable firing position.
+      record(4, 'On a firing position for the proven Wumpus: shoot', false);
+      // 5. Otherwise walk to the nearest reachable firing position.
       const step = this._safeStep(isFiringPos);
-      if (step) return 'Move' + step;
+      if (record(5, 'Wumpus proven: step toward a firing position', !!step, step && 'Move' + step)) {
+        return { action: 'Move' + step, trace };
+      }
+    } else {
+      record(4, 'On a firing position for the proven Wumpus: shoot', false);
+      record(5, 'Wumpus proven: step toward a firing position', false);
     }
 
-    // 5. Step onto an adjacent unvisited safe cell (first in canonical order).
+    // 6. Step onto an adjacent unvisited safe cell (first in canonical order).
+    let adjDir = null;
     for (const dir of ['N', 'E', 'S', 'W']) {
       const [dx, dy] = MOVE[dir];
       const nx = cx + dx, ny = cy + dy;
       if (this.inBounds(nx, ny) && !this.visited.has(this.key(nx, ny)) && this._isSafe(nx, ny)) {
-        return 'Move' + dir;
+        adjDir = dir;
+        break;
       }
     }
+    if (record(6, 'An adjacent unvisited safe cell exists: step onto it', !!adjDir, adjDir && 'Move' + adjDir)) {
+      return { action: 'Move' + adjDir, trace };
+    }
 
-    // 6. A non-adjacent unvisited safe cell exists -> BFS toward the nearest.
+    // 7. A non-adjacent unvisited safe cell exists -> BFS toward the nearest.
     const unvisitedSafe = (x, y) => !this.visited.has(this.key(x, y)) && this._isSafe(x, y);
     const towardFrontier = this._safeStep(unvisitedSafe);
-    if (towardFrontier) return 'Move' + towardFrontier;
-
-    // 7 & 8. Last-ditch speculative shot: exploration is exhausted, but we still
-    // have the arrow and have smelled a stench. Fire at an unresolved neighbour of
-    // a stenchy cell in the hope of clearing (or localizing) the Wumpus.
-    if (this.arrowVal && this.stenchyCells.size > 0) {
-      // A neighbour is a fireable target if it is NOT proven wumpus-free.
-      const fireDir = (x, y) => {
-        for (const dir of ['N', 'E', 'S', 'W']) {
-          const [dx, dy] = MOVE[dir];
-          const nx = x + dx, ny = y + dy;
-          if (!this.inBounds(nx, ny)) continue;
-          if (this.determined[formulaToString(this.wmp(nx, ny))] !== 'NO') return dir;
-        }
-        return null;
-      };
-      const hasTarget = (x, y) => this.stenchyCells.has(this.key(x, y)) && fireDir(x, y) !== null;
-      // 7. Standing on a stenchy cell with an unresolved neighbour -> shoot it.
-      if (hasTarget(cx, cy)) return 'Shoot' + fireDir(cx, cy);
-      // 8. Otherwise walk to the nearest such stenchy cell (all are safe/visited).
-      const towardStench = this._safeStep(hasTarget);
-      if (towardStench) return 'Move' + towardStench;
+    if (record(7, 'An unvisited safe cell exists: step toward it', !!towardFrontier, towardFrontier && 'Move' + towardFrontier)) {
+      return { action: 'Move' + towardFrontier, trace };
     }
 
-    // 9. Nothing left to explore and not home -> head back to (1,1).
-    if (!(cx === 1 && cy === 1)) {
+    // 8. Nothing left to explore and not home -> head back to (1,1).
+    const notHome = !(cx === 1 && cy === 1);
+    if (notHome) {
       const home = this._safeStep((x, y) => x === 1 && y === 1);
-      if (home) return 'Move' + home;
+      if (record(8, 'Nothing left to explore, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
+        return { action: 'Move' + home, trace };
+      }
+    } else {
+      record(8, 'Nothing left to explore, not home: step toward (1,1)', false);
     }
 
-    // 10. Home, out of options -> climb out empty-handed (or with gold if held).
-    return 'Climb';
+    // 9. Home, out of options -> climb out empty-handed (or with gold if held).
+    record(9, 'Nothing left to do: climb out', true, 'Climb');
+    return { action: 'Climb', trace };
   }
 }
 

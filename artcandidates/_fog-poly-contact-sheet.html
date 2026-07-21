@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Fog polygon — contact sheet</title>
+<style>
+  body { margin: 0; padding: 24px; background: #0a0a0f; color: #b8a878; font-family: 'Cinzel', Georgia, serif; }
+  h1 { color: #c9a84c; font-size: 20px; letter-spacing: 2px; text-align: center; }
+  p.note { text-align: center; font-size: 12px; color: #7a5c1e; max-width: 720px; margin: 0 auto 16px; }
+  .btn { display: block; margin: 0 auto 24px; background: #14110c; color: #c9a84c; border: 1px solid #5a3e10;
+         font-family: 'Cinzel', Georgia, serif; letter-spacing: 1px; padding: 6px 16px; cursor: pointer; }
+  .btn:hover { border-color: #c9a84c; }
+  .row { display: flex; justify-content: center; gap: 40px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 32px; }
+  .card { text-align: center; }
+  .lbl { font-size: 10px; color: #5a4a2a; margin-top: 8px; }
+  h2.section { color: #c9a84c; font-size: 13px; letter-spacing: 2px; text-align: center;
+               border-top: 1px solid #2a1f0a; padding-top: 20px; margin: 32px auto 8px; max-width: 800px; }
+
+  /* single-shape preview box: shows the TRUE polygon outline (red) so we can
+     judge how far the fog spills past it */
+  .shape { width: 220px; height: 220px; background: #14110c; border: 1px solid #2a1f0a; position: relative; overflow: hidden; }
+  .shape svg.outline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+  /* a ROOM is the 100x100 local space at a fixed pixel size, flagstone bg */
+  .room { position: relative; background: #2b2620; border: 1px solid #0d0b08; }
+  .room.one { width: 220px; height: 220px; }
+  .rooms { display: flex; gap: 0; }
+  .rooms .room { width: 160px; height: 160px; border-right: none; }
+  .rooms .room:last-child { border-right: 1px solid #0d0b08; }
+
+  .fog-cloud { position: absolute; pointer-events: none; overflow: visible; }
+  .fog-cloud svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+  .fog-rock { animation: fog-rock 7s ease-in-out infinite; }
+  @keyframes fog-rock { 0%{transform:rotate(-1.5deg);} 50%{transform:rotate(1.5deg);} 100%{transform:rotate(-1.5deg);} }
+</style>
+</head>
+<body>
+  <h1>☁ Fog Polygon ☁</h1>
+  <p class="note">Generalized fog fill: blob CENTERS are rejection-sampled to fall
+  within an arbitrary polygon (pentagon / diamond), but every blob is drawn as a
+  full, uncropped circle — never clipped to the polygon boundary. That's what lets
+  fog spill across a shared edge into a neighboring region instead of stopping at a
+  hard seam ("balloons tied to points in a polygon", not "balloons confined by a
+  polygonal wall"). Red outline = the TRUE polygon boundary, shown for reference only
+  (not part of the rendered fog). <br>Use Reroll to resample all fog.</p>
+  <button class="btn" id="reroll">⟳ Reroll all fog</button>
+
+  <h2 class="section">Individual shapes</h2>
+  <div class="row" id="shapes"></div>
+
+  <h2 class="section">Full room (5 regions composed)</h2>
+  <div class="row">
+    <div class="card"><div class="room one" id="oneroom"></div><div class="lbl">Q1 Breeze · Q2 Gold · D Pit · Q3 Wumpus · Q4 Stench</div></div>
+  </div>
+
+  <h2 class="section">Room-to-room blend (flush strip)</h2>
+  <div class="row">
+    <div class="card"><div class="rooms" id="strip"></div><div class="lbl">3 rooms flush — cross-wall blend still holds with the new shapes</div></div>
+  </div>
+
+  <script>
+    // ---- geometry: the 5-region layout confirmed in tile-layout-5region.svg ----
+    const D = [ {x:50,y:23.48}, {x:76.52,y:50}, {x:50,y:76.52}, {x:23.48,y:50} ];
+    const Q1 = [ {x:0,y:0}, {x:50,y:0}, {x:50,y:23.48}, {x:23.48,y:50}, {x:0,y:50} ];      // top-left    = Breeze
+    const Q2 = [ {x:50,y:0}, {x:100,y:0}, {x:100,y:50}, {x:76.52,y:50}, {x:50,y:23.48} ];   // top-right   = Gold
+    const Q3 = [ {x:100,y:50}, {x:100,y:100}, {x:50,y:100}, {x:50,y:76.52}, {x:76.52,y:50} ]; // bottom-right= Wumpus
+    const Q4 = [ {x:0,y:50}, {x:23.48,y:50}, {x:50,y:76.52}, {x:50,y:100}, {x:0,y:100} ];  // bottom-left = Stench
+
+    const REGIONS = [
+      { name: 'Q1 (Breeze)', points: Q1 },
+      { name: 'Q2 (Gold)',   points: Q2 },
+      { name: 'D (Pit)',     points: D  },
+      { name: 'Q3 (Wumpus)', points: Q3 },
+      { name: 'Q4 (Stench)', points: Q4 },
+    ];
+
+    // ---- point-in-polygon (even-odd ray cast) — mirrors ui.js pointInPolygon ----
+    function pointInPolygon(px, py, points) {
+      let inside = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const xi = points[i].x, yi = points[i].y;
+        const xj = points[j].x, yj = points[j].y;
+        const crosses = (yi > py) !== (yj > py);
+        if (crosses) {
+          const xCross = xi + (py - yi) * (xj - xi) / (yj - yi);
+          if (px < xCross) inside = !inside;
+        }
+      }
+      return inside;
+    }
+
+    // ---- makeFogPoly — mirrors ui.js makeFogPoly exactly ----
+    function makeFogPoly(points) {
+      // Rescaled to match ui.js: this contact sheet maps 1 local unit ~ 1% of
+      // the room box (same scale family as the live board's wall-center-to-
+      // wall-center mapping), which is ~3.4x larger px-per-unit than the old
+      // square makeFog()'s squeeze-into-90%-of-cell display. Same visual blob
+      // size at this scale needs R 13-20 -> 4-6, MIN_DIST 5 -> 1.5, SPILL 90 -> 26.
+      const N = 200, R_MIN = 4, R_MAX = 6;
+      const COLORS = ['#4a4d53', '#565a60', '#3f4247', '#616570'];
+      const MIN_DIST = 1.5, MAX_TRIES = 60;
+
+      const xs = points.map(p => p.x), ys = points.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const SPILL = 26, PAD = R_MAX + 2;
+      const spanMinX = minX - SPILL, spanMaxX = maxX + SPILL;
+      const spanMinY = minY - SPILL, spanMaxY = maxY + SPILL;
+      const offX = PAD - spanMinX, offY = PAD - spanMinY;
+      const sizeX = (spanMaxX - spanMinX) + 2 * PAD;
+      const sizeY = (spanMaxY - spanMinY) + 2 * PAD;
+      const rangeR = (a, b) => a + (b - a) * Math.random();
+
+      function samplePointInPolygon() {
+        for (let t = 0; t < MAX_TRIES; t++) {
+          const px = rangeR(minX, maxX), py = rangeR(minY, maxY);
+          if (pointInPolygon(px, py, points)) return { x: px, y: py };
+        }
+        return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+      }
+
+      const blobs = [];
+      for (let i = 0; i < N; i++) {
+        let cx, cy;
+        for (let t = 0; t < MAX_TRIES; t++) {
+          const p = samplePointInPolygon();
+          cx = p.x + offX; cy = p.y + offY;
+          if (!blobs.some(b => Math.hypot(cx - b.cx, cy - b.cy) < MIN_DIST)) break;
+        }
+        blobs.push({ cx, cy, r: rangeR(R_MIN, R_MAX), op: rangeR(0.14, 0.30),
+          fill: COLORS[Math.floor(Math.random() * COLORS.length)] });
+      }
+      const circles = blobs.map(b =>
+        `<circle cx="${b.cx.toFixed(1)}" cy="${b.cy.toFixed(1)}" r="${b.r.toFixed(1)}" ` +
+        `fill="${b.fill}" opacity="${b.op.toFixed(2)}"/>`).join('');
+
+      const el = document.createElement('div');
+      el.className = 'fog-cloud';
+      el.innerHTML =
+        `<svg viewBox="0 0 ${sizeX.toFixed(1)} ${sizeY.toFixed(1)}" xmlns="http://www.w3.org/2000/svg" overflow="visible">` +
+          `<g class="fog-rock" style="transform-origin:${(sizeX/2).toFixed(1)}px ${(sizeY/2).toFixed(1)}px">${circles}</g>` +
+        '</svg>';
+      // stash the mapping info so callers can position it against a 100x100 room
+      el.dataset.bbox = JSON.stringify({ minX, minY, maxX, maxY, sizeX, sizeY, offX, offY });
+      return el;
+    }
+
+    // Position a fog-cloud (built by makeFogPoly) inside a 100x100-local
+    // container of pixel size `roomPx`. The fog element's internal SVG spans
+    // sizeX/sizeY LOCAL units (bbox + spill + pad on each side); this places
+    // that whole SVG box in CSS px so its (0,0) local origin lands at the
+    // correct spot in the room, at 1 local unit = roomPx/100 CSS px.
+    function placeFogPoly(container, fog, roomPx) {
+      const bbox = JSON.parse(fog.dataset.bbox);
+      const scale = roomPx / 100;
+      // The SVG's local (0,0) is at room-space (minX - SPILL - PAD, minY - SPILL - PAD)
+      // = (minX - offX, minY - offY). Convert to px.
+      const leftPx = (bbox.minX - bbox.offX) * scale;
+      const topPx  = (bbox.minY - bbox.offY) * scale;
+      fog.style.left = leftPx + 'px';
+      fog.style.top = topPx + 'px';
+      fog.style.width = (bbox.sizeX * scale) + 'px';
+      fog.style.height = (bbox.sizeY * scale) + 'px';
+      container.appendChild(fog);
+    }
+
+    // draw just the true polygon outline (reference only, not part of the fog)
+    function outlineSvg(points) {
+      const pts = points.map(p => `${p.x},${p.y}`).join(' ');
+      return `<svg class="outline" viewBox="0 0 100 100"><polygon points="${pts}" fill="none" stroke="#c00" stroke-width="0.8"/></svg>`;
+    }
+
+    function renderShapes() {
+      const row = document.getElementById('shapes');
+      row.innerHTML = '';
+      for (const region of REGIONS) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const box = document.createElement('div');
+        box.className = 'shape';
+        box.innerHTML = outlineSvg(region.points);
+        const fog = makeFogPoly(region.points);
+        placeFogPoly(box, fog, 220);
+        card.appendChild(box);
+        const lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.textContent = region.name;
+        card.appendChild(lbl);
+        row.appendChild(card);
+      }
+    }
+
+    function renderRoom(container, roomPx) {
+      container.innerHTML = '';
+      for (const region of REGIONS) {
+        const fog = makeFogPoly(region.points);
+        placeFogPoly(container, fog, roomPx);
+      }
+    }
+
+    function render() {
+      renderShapes();
+      renderRoom(document.getElementById('oneroom'), 220);
+      const strip = document.getElementById('strip');
+      strip.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const room = document.createElement('div');
+        room.className = 'room';
+        strip.appendChild(room);
+        renderRoom(room, 160);
+      }
+    }
+
+    document.getElementById('reroll').addEventListener('click', render);
+    render();
+  </script>
+</body>
+</html>

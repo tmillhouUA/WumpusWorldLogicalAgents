@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" width="400" height="400">
+  <!-- 5-region floor tile (replaces the old 4-quadrant flagstone). Same look
+       per slab as before: base fill #1a1712, double-stroke seam (#0d0b08
+       outer 2px + #272115 inner 1px), just traced along the pentagon/diamond
+       edges instead of squares. Geometry matches
+       artcandidates/tile-layout-5region.svg exactly:
+         Q1 top-left = Breeze, Q2 top-right = Gold, D center = Pit,
+         Q3 bottom-right = Wumpus, Q4 bottom-left = Stench.
+       Readable source for the minified "tex floor" data-URI in style.css. -->
+  <title>5-region floor tile</title>
+
+  <rect width="100" height="100" fill="#1a1712"/>
+
+  <!-- double-stroke seams: outer dark + inner light, one polygon per region -->
+  <g fill="none" stroke="#0d0b08" stroke-width="2" stroke-linejoin="round">
+    <polygon points="50.00,24.48 75.52,50.00 50.00,75.52 24.48,50.00"/>
+    <polygon points="0.71,0.71 49.28,0.70 49.00,23.53 23.53,49.00 0.70,49.28"/>
+    <polygon points="50.72,0.70 99.29,0.71 99.30,49.28 76.47,49.00 51.00,23.53"/>
+    <polygon points="99.30,50.72 99.29,99.29 50.72,99.30 51.00,76.47 76.47,51.00"/>
+    <polygon points="0.70,50.72 23.53,51.00 49.00,76.47 49.28,99.30 0.71,99.29"/>
+  </g>
+  <g fill="none" stroke="#272115" stroke-width="1" stroke-linejoin="round">
+    <polygon points="50.00,25.48 74.52,50.00 50.00,74.52 25.48,50.00"/>
+    <polygon points="1.41,1.41 48.57,1.40 48.00,23.58 23.58,48.00 1.40,48.57"/>
+    <polygon points="51.43,1.40 98.59,1.41 98.60,48.57 76.42,48.00 52.00,23.58"/>
+    <polygon points="98.60,51.43 98.59,98.59 51.43,98.60 52.00,76.42 76.42,52.00"/>
+    <polygon points="1.40,51.43 23.58,52.00 48.00,76.42 48.57,98.60 1.41,98.59"/>
+  </g>
+</svg>

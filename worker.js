@@ -9,6 +9,18 @@
                                             start cell, reply with a sweep
      { type:'act', gen, step }           -> run one time step (action + percept
                                             + scream + optional shot), reply
+     { type:'resync', gen, mode }        -> re-sweep with no world change (used
+                                            when switching INTO automatic: manual
+                                            play withholds auto-inference, so the
+                                            agent's determined cache may be stale
+                                            for the policy — this catches it up
+                                            before policyAction() runs), reply
+     { type:'decide', gen }              -> read-only: "what would the policy do
+                                            next?" replies { type:'decision',
+                                            action, trace } (trace is the rule-by-
+                                            rule pass/fail list, for the Decision
+                                            Rules panel) — does NOT apply the
+                                            action or advance the world
 
    Replies are tagged and STREAMED. As each query completes, the worker posts
    { gen, type:'resolution', view } so the solver panel fills in live; when the
@@ -40,7 +52,8 @@ self.onmessage = function (e) {
   // Read-only — no world change here (the main thread owns the Game and applies
   // the action via a normal 'act'); we just answer "what would you do?".
   if (type === 'decide') {
-    self.postMessage({ gen, type: 'decision', action: agent.policyAction() });
+    const { action, trace } = agent.policyAction();
+    self.postMessage({ gen, type: 'decision', action, trace });
     return;
   }
 
@@ -54,6 +67,8 @@ self.onmessage = function (e) {
   } else if (type === 'act') {
     agent.resolutions = [];           // start a fresh ask list for this turn
     agent.act(step);
+  } else if (type === 'resync') {
+    agent.resolutions = [];           // fresh ask list; falls through to the sweep below
   }
 
   // sweep() settles frontier facts (mutating the KB), so capture the display

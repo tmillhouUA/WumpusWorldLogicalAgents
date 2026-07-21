@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 110 110" width="440" height="440">
+  <!-- CONFIRMATION DRAWING (line art, no fill) of the proposed 5-region room
+       layout: the existing 4 quadrants, each with its inner (room-center-facing)
+       corner cut off, plus a new central diamond tile that occupies the cut
+       corners. The diamond is a square rotated 45 deg, side = 0.75 * quadrant
+       side (quadrant side = 50, so diamond side = 37.5), centered on the room.
+       Diamond vertices sit on the quadrant divider lines at distance
+       (37.5/2)*sqrt(2) = 26.52 from the room center (50,50):
+         top (50,23.48) right (76.52,50) bottom (50,76.52) left (23.48,50)
+       This is a PLAIN LINE DRAWING to confirm the geometry before any color,
+       fog, or fill work — nothing here is final art. -->
+  <title>5-region tile layout — confirmation drawing</title>
+
+  <!-- room outline -->
+  <rect x="0" y="0" width="100" height="100" fill="none" stroke="#000" stroke-width="0.6"/>
+
+  <!-- quadrant divider lines (for reference — the ORIGINAL 4-quadrant seams) -->
+  <line x1="50" y1="0" x2="50" y2="100" stroke="#999" stroke-width="0.3" stroke-dasharray="1.5,1.5"/>
+  <line x1="0" y1="50" x2="100" y2="50" stroke="#999" stroke-width="0.3" stroke-dasharray="1.5,1.5"/>
+
+  <!-- each quadrant boundary, drawn with its inner (center-facing) corner CUT
+       OFF along the diamond edge — i.e. a pentagon: outer room corner, two
+       outer edge midpoints, and the two diamond vertices adjacent to that
+       quadrant, in place of the sharp center corner. -->
+  <g fill="none" stroke="#0645ad" stroke-width="0.6">
+    <!-- top-left quadrant (Wumpus?) : corners (0,0)-(50,0)-(50,50 cut)-(0,50) -->
+    <polygon points="0,0 50,0 50,23.48 23.48,50 0,50"/>
+    <!-- top-right quadrant (Pit?) -->
+    <polygon points="50,0 100,0 100,50 76.52,50 50,23.48"/>
+    <!-- bottom-right quadrant (Breeze?) -->
+    <polygon points="100,50 100,100 50,100 50,76.52 76.52,50"/>
+    <!-- bottom-left quadrant (Stench?) -->
+    <polygon points="0,50 23.48,50 50,76.52 50,100 0,100"/>
+  </g>
+
+  <!-- central diamond (new tile — e.g. Gold?), rotated square, side 37.5,
+       centered on the room -->
+  <polygon points="50,23.48 76.52,50 50,76.52 23.48,50"
+           fill="none" stroke="#c00" stroke-width="0.7"/>
+
+  <!-- labels -->
+  <g font-family="sans-serif" font-size="5" fill="#333" text-anchor="middle">
+    <text x="18" y="18">Q1</text>
+    <text x="82" y="18">Q2</text>
+    <text x="82" y="86">Q3</text>
+    <text x="18" y="86">Q4</text>
+    <text x="50" y="52" fill="#c00">D</text>
+  </g>
+</svg>

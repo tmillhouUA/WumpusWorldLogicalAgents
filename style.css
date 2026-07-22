@@ -719,6 +719,15 @@ body {
   color: var(--text-dim);
   font-style: italic;
 }
+/* Shown inside an ask entry when its proof genuinely has zero resolution
+   steps (see buildSteps) — a correct, trivial "not entailed" outcome, not a
+   missing/broken render. */
+.res-step-empty {
+  font-size: 11px;
+  color: var(--text-body);
+  font-style: italic;
+  padding: 6px 8px;
+}
 
 /* "resolving…" indicator: sits below the latest streamed ask while the worker
    is still running, fading slowly in and out, then disappears when done. */

@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
         recordAskedFact(view.fact);
         renderGrid();
       }
+      // A user-posed Ask is exactly one _ask call with no follow-up 'done'
+      // (unlike the agent's own sweep queries, which are steps within a
+      // larger turn) — so this IS the ask completing; release the busy lock
+      // submitAsk set, so input isn't left stuck disabled.
+      if (view.userPosed) { setBusy(false); renderAsk(); }
       renderSolver();
       return;
     }
@@ -348,38 +353,53 @@ document.addEventListener('DOMContentLoaded', () => {
      flagstone tone (the cross-section of the shattered tile) around an inner
      hole filled with a soft, gradual dark-gray → black radial gradient. Inline
      SVG so rim + gradient are one shape. */
-  function makePit() {
-    const pit = document.createElement('div');
-    pit.className = 'pit';
-
-    // Swirling "wind" arcs around the rim: ~20 partial circles (~60 deg) at
-    // radii near the pit's radius plus noise, scattered at random angles, in
-    // low-opacity blue. Placed randomly (per pit) but computed once here.
-    const cx = 50, cy = 50, baseR = 40;   // pit hole radius ~40
-    let windArcs = '';
-    for (let i = 0; i < 30; i++) {
-      const r = baseR + (Math.random() * 15 - 2);            // pit radius + noise (~40–50)
-      const start = Math.random() * Math.PI * 2;             // random start angle
-      const sweep = (60 + Math.random() * 15) * Math.PI / 180; // ~55–70 deg arc
+  // Shared "swirling wind" arc generator used by both the pit rim and the
+  // breeze glyph: a ring of partial circles (~55-75 deg each) at randomized
+  // radii/angles/opacity/stroke-width, each with its own slow rotation (see
+  // .wind-arc + spin keyframes in CSS) so the ring drifts rather than sitting
+  // static. Returns the joined SVG <path> markup string.
+  //   count            — how many arcs
+  //   cx, cy           — ring center, in the caller's local coordinate space
+  //   rMin, rMax       — arc radius range (radius = rMin + noise up to rMax-rMin)
+  //   sweepMinDeg, sweepRangeDeg — arc sweep angle range, degrees
+  //   wMin, wRange     — stroke-width range
+  function makeWindArcs({ count, cx, cy, rMin, rMax, sweepMinDeg, sweepRangeDeg, wMin, wRange }) {
+    let arcs = '';
+    for (let i = 0; i < count; i++) {
+      const r = rMin + Math.random() * (rMax - rMin);           // radius, randomized within range
+      const start = Math.random() * Math.PI * 2;                // random start angle
+      const sweep = (sweepMinDeg + Math.random() * sweepRangeDeg) * Math.PI / 180;
       const end = start + sweep;
       const x1 = (cx + r * Math.cos(start)).toFixed(2);
       const y1 = (cy + r * Math.sin(start)).toFixed(2);
       const x2 = (cx + r * Math.cos(end)).toFixed(2);
       const y2 = (cy + r * Math.sin(end)).toFixed(2);
       const rr = r.toFixed(2);
-      const op = (0.25 + Math.random() * 0.30).toFixed(2);   // 0.25–0.55 opacity (matches the breeze glyph)
-      const w = (1 + Math.random() * 0.9).toFixed(2);      // slight stroke variation
-      // Each arc slowly rotates about the pit center at a slightly different
-      // speed/direction (see .wind-arc + spin keyframes in CSS).
-      const dur = (9 + Math.random() * 6).toFixed(1);        // 9–15s per turn
+      const op = (0.25 + Math.random() * 0.30).toFixed(2);      // 0.25–0.55 opacity
+      const w = (wMin + Math.random() * wRange).toFixed(2);     // stroke variation
+      const dur = (9 + Math.random() * 6).toFixed(1);           // 9–15s per turn
       const dir = Math.random() < 0.5 ? 'normal' : 'reverse';
       // large-arc-flag 0 (arc < 180), sweep-flag 1 (clockwise)
-      windArcs +=
+      arcs +=
         `<path class="wind-arc" d="M${x1} ${y1} A ${rr} ${rr} 0 0 1 ${x2} ${y2}" ` +
         `fill="none" stroke="#6aa8e0" stroke-width="${w}" ` +
         `stroke-linecap="round" opacity="${op}" ` +
         `style="animation-duration:${dur}s;animation-direction:${dir}"/>`;
     }
+    return arcs;
+  }
+
+  function makePit() {
+    const pit = document.createElement('div');
+    pit.className = 'pit';
+
+    // Swirling wind arcs around the rim, at radii near the pit's radius
+    // (~40) plus noise. Placed randomly (per pit) but computed once here.
+    const windArcs = makeWindArcs({
+      count: 30, cx: 50, cy: 50,
+      rMin: 38, rMax: 53, sweepMinDeg: 60, sweepRangeDeg: 15,
+      wMin: 1, wRange: 0.9,
+    });
 
     pit.innerHTML =
       '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">' +
@@ -417,98 +437,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* The BREEZE percept glyph: a standalone swirl of the same blue wind arcs the
-     pit uses, GENERATED on render so no two are alike (like the pit's wind).
-     Partial ~60-deg circles at varied radii and random angles, low-opacity
-     blue, clustered around the glyph center. */
+     pit uses, GENERATED on render so no two are alike (like the pit's wind),
+     clustered around the glyph center. */
   function makeBreeze() {
     const el = document.createElement('div');
     el.className = 'percept-glyph breeze-glyph';
-    const cx = 50, cy = 50;
-    let arcs = '';
-    for (let i = 0; i < 22; i++) {
-      const r = 19 + Math.random() * 12;                       // radius spread 12–36
-      const start = Math.random() * Math.PI * 2;               // random start angle
-      const sweep = (55 + Math.random() * 20) * Math.PI / 180; // ~55–75 deg arc
-      const end = start + sweep;
-      const x1 = (cx + r * Math.cos(start)).toFixed(2);
-      const y1 = (cy + r * Math.sin(start)).toFixed(2);
-      const x2 = (cx + r * Math.cos(end)).toFixed(2);
-      const y2 = (cy + r * Math.sin(end)).toFixed(2);
-      const rr = r.toFixed(2);
-      const op = (0.25 + Math.random() * 0.30).toFixed(2);     // 0.25–0.55 opacity
-      const w = (1.2 + Math.random() * 1.0).toFixed(2);        // stroke variation
-      // Each arc slowly rotates about the glyph center at a slightly different
-      // speed/direction, so the swirl drifts in and out of phase (see the
-      // .wind-arc rule + spin keyframes in CSS).
-      const dur = (9 + Math.random() * 6).toFixed(1);          // 9–15s per turn
-      const dir = Math.random() < 0.5 ? 'normal' : 'reverse';
-      arcs +=
-        `<path class="wind-arc" d="M${x1} ${y1} A ${rr} ${rr} 0 0 1 ${x2} ${y2}" ` +
-        `fill="none" stroke="#6aa8e0" stroke-width="${w}" ` +
-        `stroke-linecap="round" opacity="${op}" ` +
-        `style="animation-duration:${dur}s;animation-direction:${dir}"/>`;
-    }
+    const arcs = makeWindArcs({
+      count: 22, cx: 50, cy: 50,
+      rMin: 19, rMax: 31, sweepMinDeg: 55, sweepRangeDeg: 20,
+      wMin: 1.2, wRange: 1.0,
+    });
     el.innerHTML =
       '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">' +
         arcs +
-      '</svg>';
-    return el;
-  }
-
-  // Fog cloud for an UNKNOWN quadrant. Built fresh on every call — a scatter of
-  // ~40 mostly-transparent gray blobs whose accumulated density reads as fog
-  // with a ragged, organic edge (no straight sides). Rejection sampling spaces
-  // the centers out so they don't clump. A PAD margin larger than the max blob
-  // radius surrounds the scatter field, so no blob reaches the viewBox edge —
-  // zero clipping. Because it's regenerated per placement (Math.random, no seed),
-  // no two fog tiles are alike. The whole cloud gently rocks (CSS .fog-cloud).
-  // (Mirrors the standalone artcandidates/gen-fog.js reference generator.)
-  function makeFog() {
-    const N = 200, R_MIN = 13, R_MAX = 20;
-    const COLORS = ['#4a4d53', '#565a60', '#3f4247', '#616570'];
-    const MIN_DIST = 5, MAX_TRIES = 60;
-    // geometry (derived so nothing touches the viewBox edge). SPILL is large so
-    // the fog reaches well into neighboring quadrants and the banks blend.
-    const TILE = 50, SPILL = 90, PAD = R_MAX + 2;
-    const FIELD = TILE + 2 * SPILL;
-    const SPAN_MIN = PAD, SPAN_MAX = PAD + FIELD;
-    const SIZE = FIELD + 2 * PAD, CENTER = SIZE / 2;
-    const rangeR = (a, b) => a + (b - a) * Math.random();
-
-    const blobs = [];
-    for (let i = 0; i < N; i++) {
-      let cx, cy;
-      for (let t = 0; t < MAX_TRIES; t++) {
-        cx = rangeR(SPAN_MIN, SPAN_MAX);
-        cy = rangeR(SPAN_MIN, SPAN_MAX);
-        if (!blobs.some(b => Math.hypot(cx - b.cx, cy - b.cy) < MIN_DIST)) break;
-      }
-      blobs.push({
-        cx, cy,
-        r: rangeR(R_MIN, R_MAX),
-        op: rangeR(0.14, 0.30),
-        fill: COLORS[Math.floor(Math.random() * COLORS.length)],
-      });
-    }
-    const circles = blobs.map(b =>
-      `<circle cx="${b.cx.toFixed(1)}" cy="${b.cy.toFixed(1)}" r="${b.r.toFixed(1)}" ` +
-      `fill="${b.fill}" opacity="${b.op.toFixed(2)}"/>`).join('');
-
-    // Desync + accentuate the rock so neighboring clouds don't move in
-    // lockstep: randomize duration/delay/direction and nudge the amplitude
-    // per-instance (see .fog-rock's --fog-rock-amp custom property).
-    const rockDur = (2 + Math.random() * 2).toFixed(1);   // 2-4s per cycle
-    const rockDelay = (-Math.random() * 10).toFixed(1);   // negative = starts mid-cycle
-    const rockDir = Math.random() < 0.5 ? 'normal' : 'reverse';
-    const rockAmp = (3 + Math.random() * 2).toFixed(1); // 3-5deg
-
-    const el = document.createElement('div');
-    el.className = 'fog-cloud';
-    el.innerHTML =
-      `<svg viewBox="0 0 ${SIZE} ${SIZE}" xmlns="http://www.w3.org/2000/svg" overflow="visible">` +
-        `<g class="fog-rock" style="transform-origin:${CENTER}px ${CENTER}px; ` +
-        `--fog-rock-amp:${rockAmp}deg; animation-duration:${rockDur}s; ` +
-        `animation-delay:${rockDelay}s; animation-direction:${rockDir}">${circles}</g>` +
       '</svg>';
     return el;
   }
@@ -542,18 +483,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // New Map/Reset replaces the whole cache below).
   let fogCache = {};
 
-  // Fog cloud filling an ARBITRARY polygon (not just a square quadrant) — the
-  // generalization of makeFog(). points: a flat array of {x,y} pairs in 0-100
-  // local space (the same convention makePit()'s rim polygons use), e.g. a
-  // pentagon or the diamond from the 5-region tile layout.
+  // Fog cloud filling an ARBITRARY polygon (e.g. a pentagon or the diamond
+  // from the 5-region tile layout). points: a flat array of {x,y} pairs in
+  // 0-100 local space (the same convention makePit()'s rim polygons use).
   //
-  // Same "balloons tied to points in a polygon" mechanic as makeFog(): blob
-  // CENTERS are rejection-sampled to fall within (up to the edge of) the given
-  // polygon, but each blob is drawn as a full, uncropped circle — never
-  // clipped to the polygon boundary. That's what lets a blob near the edge
-  // spill its round rim into a neighboring region instead of stopping at a
-  // hard seam. Spacing (MIN_DIST) is scoped to THIS call's own blobs only —
-  // regions are generated independently and never spaced against each other.
+  // "Balloons tied to points in a polygon" mechanic: blob CENTERS are
+  // rejection-sampled to fall within (up to the edge of) the given polygon,
+  // but each blob is drawn as a full, uncropped circle — never clipped to
+  // the polygon boundary. That's what lets a blob near the edge spill its
+  // round rim into a neighboring region instead of stopping at a hard seam.
+  // Spacing (MIN_DIST) is scoped to THIS call's own blobs only — regions are
+  // generated independently and never spaced against each other.
   //
   // cacheKey (optional): if given, the blob layout is generated once and
   // reused on subsequent calls with the same key (see fogCache above), so a
@@ -562,20 +502,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // sheets, where a fresh scatter each call is the point).
   function makeFogPoly(points, cacheKey) {
     // Blob size/spacing/spill are tuned relative to the LOCAL coordinate space
-    // (0-100 = wall-center to wall-center), which now renders at ~1 local unit
-    // per room-percent — a real, larger px-per-unit scale than the old square
-    // makeFog() used (that version squeezed its whole padded canvas into 90%
-    // of the cell, ~0.33% per unit). Same visual blob size at this new scale
-    // needs these constants scaled down by that ratio (~3.4x): R 13-20 -> 4-6,
-    // MIN_DIST 5 -> 1.5, SPILL 90 -> 26.
+    // (0-100 = wall-center to wall-center), which renders at ~1 local unit per
+    // room-percent.
     const N = 200, R_MIN = 4, R_MAX = 6;
     const COLORS = ['#4a4d53', '#565a60', '#3f4247', '#616570'];
     const MIN_DIST = 1.5, MAX_TRIES = 60;
 
     // Bounding box of the polygon, expanded by SPILL (candidate-sampling
     // field) and then by PAD (transparent viewBox margin so no blob's rim can
-    // ever reach the SVG viewport edge — same zero-clipping guarantee as
-    // makeFog's PAD = R_MAX + 2).
+    // ever reach the SVG viewport edge — zero-clipping guarantee).
     const xs = points.map(p => p.x), ys = points.map(p => p.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -583,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const spanMinX = minX - SPILL, spanMaxX = maxX + SPILL;
     const spanMinY = minY - SPILL, spanMaxY = maxY + SPILL;
     // Shift so the sampling field's own top-left lands at (PAD, PAD) in the
-    // SVG's local coordinate space, matching makeFog()'s SPAN_MIN = PAD frame.
+    // SVG's local coordinate space.
     const offX = PAD - spanMinX, offY = PAD - spanMinY;
     const sizeX = (spanMaxX - spanMinX) + 2 * PAD;
     const sizeY = (spanMaxY - spanMinY) + 2 * PAD;
@@ -660,21 +595,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return el;
   }
 
-  // Fog over a whole cell: one fresh fog cloud per quadrant, CENTERED on the
-  // quadrant center (25%/75%) — same as the confirmed-good contact-sheet
-  // geometry — just bigger, so it reaches further both inward (quadrant
-  // overlap) and outward (into the wall).
-  function placeFog(cell) {
-    for (const [qx, qy] of [[0,0],[1,0],[0,1],[1,1]]) {
-      const fog = makeFog();
-      fog.style.width = fog.style.height = '90%';
-      fog.style.left = (qx ? 75 : 25) + '%';
-      fog.style.top  = (qy ? 75 : 25) + '%';
-      fog.style.transform = 'translate(-50%, -50%)';
-      cell.appendChild(fog);
-    }
-  }
-
   // 5-region tile layout (confirmed via artcandidates/tile-layout-5region.svg):
   // 4 pentagons (each quadrant with its room-center-facing corner sliced off)
   // plus a central diamond, in 0-100 LOCAL space spanning the room WALL-CENTER
@@ -704,11 +624,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fog = makeFogPoly(points, cacheKey);
     const bbox = JSON.parse(fog.dataset.bbox);
     delete fog.dataset.bbox;
-    // The .fog-cloud DIV IS the padded SVG canvas (sizeX x sizeY local units) —
-    // same model as the old square makeFog()/placeFog(): the div is the whole
-    // (deliberately oversized) canvas, not just the polygon's own bbox, so its
-    // built-in spill naturally overflows into neighboring regions. We only
-    // need to position that whole div so the canvas's local (0,0) — which is
+    // The .fog-cloud DIV IS the padded SVG canvas (sizeX x sizeY local units):
+    // the div is the whole (deliberately oversized) canvas, not just the
+    // polygon's own bbox, so its built-in spill naturally overflows into
+    // neighboring regions. We only need to position that whole div so the
+    // canvas's local (0,0) — which is
     // (true-local-x, true-local-y) = (-offX, -offY), see makeFogPoly — lands
     // at the right spot in the .grid-cell's percentage space.
     //
@@ -1295,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Canonical rule list (labels mirror the `record(...)` calls in logic.js
-  // policyAction, in order) — used to show ALL 11 rules every turn, even the
+  // policyAction, in order) — used to show ALL 9 rules every turn, even the
   // ones a short-circuited trace never reached. Keep in sync with that
   // function's docstring/record() calls if the policy changes.
   const POLICY_RULES = [
@@ -1412,6 +1332,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildSteps(askEl, ask) {
     buildPreprocessing(askEl, ask);     // pipeline snapshots first, then the steps
+
+    // A query can be legitimately "not entailed" with ZERO resolution steps:
+    // if nothing in the KB is yet connected (via the anchor/component-
+    // separation filter) to the query's atoms — e.g. asking about a distant,
+    // unvisited cell early in the game — pure-symbol elimination can reduce
+    // the whole component to nothing before resolution proper ever runs.
+    // That's a correct, trivial proof, not a bug — but with no placeholder it
+    // reads as broken (steps silently missing). Flag it explicitly instead.
+    if (ask.steps.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'res-step-empty';
+      empty.textContent = 'No resolution steps — nothing in the knowledge base was connected to this query yet.';
+      askEl.appendChild(empty);
+      return;
+    }
+
     for (const st of ask.steps) {
       const stepEl = document.createElement('details');
       stepEl.className = 'res-step';
@@ -1775,9 +1711,19 @@ document.addEventListener('DOMContentLoaded', () => {
      agent's own asks use; its streamed view appends to the resolution log (at the
      bottom, since streamed views push in order) tagged userPosed so the panel
      tints it. Blocked while a turn's inference is in flight, to avoid interleaving
-     a manual ask with the agent's step queries on the shared KB. */
+     a manual ask with the agent's step queries on the shared KB. setBusy(true)
+     locks input for the DURATION of the ask too (a threat query — Pit/Wumpus —
+     can run a much larger, unbounded search than a percept query and take
+     noticeably longer): without this, a click/keypress/automatic Run step taken
+     while the ask is still resolving would reach doAction and clear
+     `resolutions` out from under the still-pending ask's reply, discarding its
+     view before it ever renders. The worker has no 'done' for a plain ask, so
+     the matching setBusy(false) lives in the 'resolution' handler instead,
+     keyed off view.userPosed (see below). */
   function submitAsk() {
     if (!askComplete() || inferring) return;
+    setBusy(true);
+    renderAsk();          // reflect the now-disabled Submit button immediately
     worker.postMessage({ type: 'ask', gen, query: askQuery });
   }
 

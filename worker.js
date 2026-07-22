@@ -21,6 +21,10 @@
                                             rule pass/fail list, for the Decision
                                             Rules panel) — does NOT apply the
                                             action or advance the world
+     { type:'ask', gen, query }          -> read-only: run one user-posed query
+                                            against the current KB. No 'done'
+                                            reply — just the single streamed
+                                            'resolution' message (see below).
 
    Replies are tagged and STREAMED. As each query completes, the worker posts
    { gen, type:'resolution', view } so the solver panel fills in live; when the

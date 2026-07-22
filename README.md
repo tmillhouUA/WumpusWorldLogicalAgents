@@ -68,7 +68,7 @@ Every shortcut here is **sound** — it never lets the agent conclude something 
 
 A live version is available at [tmillhouua.github.io/WumpusWorldLogicalAgents](https://tmillhouua.github.io/WumpusWorldLogicalAgents/).
 
-Alternatively, clone or download the repository and open `index.html` directly in a browser (or serve the folder locally, e.g. `npx serve .`). The visualization runs entirely in the browser with no build step required.
+Alternatively, clone or download the repository and serve the folder locally (e.g. `npx serve .`). The app uses a Web Worker for the agent's reasoning, which most browsers block from running off a plain `file://` page — so serving isn't optional, though it still requires no build step, just a static file server.
 
 ## Dependencies
 

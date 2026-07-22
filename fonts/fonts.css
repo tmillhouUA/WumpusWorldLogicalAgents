@@ -1,0 +1,30 @@
+/* fonts.css — self-hosted webfonts (replaces the Google Fonts <link> in
+   index.html so the app has no network dependency once loaded).
+
+   All three are SIL Open Font License, so bundling the files locally is
+   fine. Files downloaded from Google's own CDN (fonts.gstatic.com), Latin
+   subset only (this project never needs Latin-Extended/Cyrillic/etc.). */
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400 900;   /* one file covers the whole weight range used (400/700/900) */
+  font-display: swap;
+  src: url('cinzel-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Share Tech Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('share-tech-mono-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'UnifrakturMaguntia';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('unifrakturmaguntia-latin.woff2') format('woff2');
+}

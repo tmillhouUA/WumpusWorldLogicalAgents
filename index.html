@@ -5,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dungeon of the Wumpus</title>
 
-  <!-- TODO (self-host fonts): these three faces are pulled from Google Fonts
-       for now so we can iterate on the look. Once the design is settled, swap
-       to local .woff2 files (offline/portable, and avoids the font "pop-in"
-       flash Google Fonts causes). All three are SIL OFL, so bundling is fine.
+  <!-- Self-hosted webfonts (fonts/fonts.css) — offline/portable, no network
+       dependency once loaded, and avoids the font "pop-in" flash a remote
+       stylesheet causes. All three are SIL OFL, so bundling is fine.
          UnifrakturMaguntia -> blackletter title
          Cinzel             -> panel/section titles + labels
          Share Tech Mono    -> body text, KB formulas, resolution lines -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Share+Tech+Mono&family=UnifrakturMaguntia&display=swap"
-    rel="stylesheet"
-  />
+  <link rel="stylesheet" href="fonts/fonts.css" />
 
   <link rel="stylesheet" href="style.css" />
 </head>

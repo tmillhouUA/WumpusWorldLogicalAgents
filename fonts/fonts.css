@@ -5,11 +5,15 @@
    fine. Files downloaded from Google's own CDN (fonts.gstatic.com), Latin
    subset only (this project never needs Latin-Extended/Cyrillic/etc.). */
 
+/* font-display: block (rather than the default swap) briefly holds text
+   invisible instead of showing it in a fallback font — since these three
+   files are small and same-origin, that block period always ends before it
+   would matter, so text simply appears once in its real face, no pop-in. */
 @font-face {
   font-family: 'Cinzel';
   font-style: normal;
   font-weight: 400 900;   /* one file covers the whole weight range used (400/700/900) */
-  font-display: swap;
+  font-display: block;
   src: url('cinzel-latin.woff2') format('woff2');
 }
 
@@ -17,7 +21,7 @@
   font-family: 'Share Tech Mono';
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url('share-tech-mono-latin.woff2') format('woff2');
 }
 
@@ -25,6 +29,6 @@
   font-family: 'UnifrakturMaguntia';
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url('unifrakturmaguntia-latin.woff2') format('woff2');
 }

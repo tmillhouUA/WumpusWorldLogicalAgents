@@ -28,9 +28,9 @@
   --text-body:   #b8a878;
   --text-dim:    #5a4a2a;
 
-  /* Font stacks. The named faces come from the Google Fonts link in index.html
-     (self-host TODO noted there); the fallbacks keep things legible before the
-     web fonts load. */
+  /* Font stacks. The named faces are self-hosted (fonts/fonts.css, using
+     font-display: block to avoid a fallback-font pop-in); these fallbacks
+     only matter if a face fails to load entirely. */
   --font-title: 'UnifrakturMaguntia', 'Cinzel', serif;
   --font-label: 'Cinzel', Georgia, serif;
   --font-mono:  'Share Tech Mono', ui-monospace, "Cascadia Code", Consolas, monospace;

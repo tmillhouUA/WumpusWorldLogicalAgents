@@ -1533,10 +1533,12 @@ document.addEventListener('DOMContentLoaded', () => {
      POLICY when the user switches to automatic mid-game: policyAction() reads
      `determined` to decide which cells are safe, and a cell the user actually
      visited but never proved via ASK reads as unsafe, sending the agent
-     straight back to (1,1) (rule 9) instead of exploring it. Fix: on entering
-     automatic, force one resync sweep (autoInfer:true, no world change) before
-     any Run/Step can fire, so the cache is caught up to everything now provable
-     from percepts gathered so far. */
+     straight back to (1,1) (rule 9) instead of exploring it. Fix: clear
+     agentSwept on entering automatic, so the SAME catch-up resync
+     requestDecision/stepOnce already do for a fresh game also runs here —
+     but only once the next Run/Step is actually pressed, not immediately on
+     switching. (Automatic "does nothing and queries nothing" until Run/Step
+     is pressed, same invariant as a new game — see agentSwept above.) */
   function setMode(next) {
     if (next === mode) return;
     mode = next;
@@ -1544,8 +1546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // pending 'decision' reply can't apply a stray auto-action in manual mode.
     if (mode !== 'automatic') { if (running) stopRun(); stepping = false; }
     else if (game && !game.state.done) {
-      resyncAgent();
-      agentSwept = true;   // this resync covers the same catch-up requestDecision/stepOnce do
+      agentSwept = false;   // next Run/Step's catch-up resync will cover this
     }
     renderControls();
   }

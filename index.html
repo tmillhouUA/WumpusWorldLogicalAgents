@@ -6,8 +6,10 @@
   <title>Dungeon of the Wumpus</title>
 
   <!-- Self-hosted webfonts (fonts/fonts.css) — offline/portable, no network
-       dependency once loaded, and avoids the font "pop-in" flash a remote
-       stylesheet causes. All three are SIL OFL, so bundling is fine.
+       dependency once loaded. Each face uses font-display: block, so a brief
+       load holds text invisible rather than showing it in a fallback font —
+       avoids the pop-in flash a remote stylesheet (or font-display: swap)
+       causes. All three are SIL OFL, so bundling is fine.
          UnifrakturMaguntia -> blackletter title
          Cinzel             -> panel/section titles + labels
          Share Tech Mono    -> body text, KB formulas, resolution lines -->

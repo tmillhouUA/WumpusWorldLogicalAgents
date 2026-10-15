@@ -1219,15 +1219,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ones a short-circuited trace never reached. Keep in sync with that
   // function's docstring/record() calls if the policy changes.
   const POLICY_RULES = [
-    { rule: 1, label: 'If gold in current room, grab.' },
-    { rule: 2, label: 'Elif carrying gold AND at (1,1), climb.' },
-    { rule: 3, label: 'Elif carrying gold, go toward (1,1).' },
+    { rule: 1, label: 'If carrying gold AND at (1,1), climb.' },
+    { rule: 2, label: 'Elif carrying gold, go toward (1,1).' },
+    { rule: 3, label: 'Elif gold in current room, grab.' },
     { rule: 4, label: 'Elif Wumpus known AND can shoot Wumpus, shoot.' },
     { rule: 5, label: 'Elif Wumpus known, go toward nearest safe firing position.' },
     { rule: 6, label: 'Elif adjacent unvisited safe room exists, go to it.' },
     { rule: 7, label: 'Elif unvisited safe room exists, go toward it.' },
-    { rule: 8, label: 'Elif not at (1,1), step toward (1,1).' },
-    { rule: 9, label: 'Else climb out.' },
+    { rule: 8, label: 'Elif at (1,1), climb out.' },
+    { rule: 9, label: 'Else, step toward (1,1).' },
   ];
 
   /* The automatic policy's rule-by-rule trace (see logic.js policyAction),

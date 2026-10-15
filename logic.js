@@ -774,13 +774,23 @@ class Game {
       const wumpus = free[Math.floor(this.rng() * free.length)];
       const gold = this._weightedPick(free);   // biased away from (1,1)
 
+      // A cell is "quiet" if it has neither a breeze nor a stench, i.e. no
+      // pit and no Wumpus in any neighbour.
+      const quiet = (x, y) => !this.neighbors(x, y).some(([nx, ny]) =>
+        pits.has(this.key(nx, ny)) || (nx === wumpus[0] && ny === wumpus[1]));
+
       // Reject a breeze or stench at the entrance: in automatic mode the
       // agent starts there with no prior evidence, so a percept at (1,1)
       // makes the map trivially unsolvable by inference alone (a pit/Wumpus
       // is provably adjacent before a single cell has been explored).
-      const entranceBreezy = this.neighbors(1, 1).some(([nx, ny]) => pits.has(this.key(nx, ny)));
-      const entranceStenchy = this.neighbors(1, 1).some(([nx, ny]) => nx === wumpus[0] && ny === wumpus[1]);
-      if (entranceBreezy || entranceStenchy) continue;
+      if (!quiet(1, 1)) continue;
+
+      // Also require at least one of the entrance's neighbours, (1,2) or
+      // (2,1), to be quiet. A quiet entrance only proves those two cells
+      // safe; if BOTH then carry a percept, the agent can often prove
+      // nothing further and has to climb straight back out. One quiet
+      // neighbour guarantees at least one more provably safe cell beyond it.
+      if (!quiet(1, 2) && !quiet(2, 1)) continue;
 
       if (this._pitFreePath(pits, gold)) {     // solvable?
         this.pits = pits;
@@ -1740,11 +1750,11 @@ class Agent {
      each action. Returns an action string (see ACTIONS) or null if none applies.
 
      The behavioural policy (for students):
-       1.  In the gold room                                   -> Grab.
-       2.  At (1,1) and carrying the gold                     -> Climb.
-       3.  Carrying the gold but not at (1,1)                 -> step (BFS) toward
+       1.  At (1,1) and carrying the gold                     -> Climb.
+       2.  Carrying the gold but not at (1,1)                 -> step (BFS) toward
                                                                  (1,1) — get the
                                                                  gold home first.
+       3.  In the gold room                                   -> Grab.
        4.  Wumpus proven, arrow in hand, and standing on a
            safe firing position on its row/column            -> Shoot at it.
        5.  Wumpus proven, arrow in hand, a safe firing
@@ -1754,8 +1764,19 @@ class Agent {
                                                                  (first in N,E,S,W).
        7.  An unvisited safe cell exists but none adjacent    -> step (BFS) toward
                                                                  the nearest one.
-       8.  No unvisited safe cells and not at (1,1)           -> step (BFS) toward (1,1).
-       9.  At (1,1) with no unvisited safe cells             -> Climb (give up).
+       8.  At (1,1) with no unvisited safe cells              -> Climb (give up).
+       9.  No unvisited safe cells and not at (1,1)           -> step (BFS) toward (1,1).
+
+     The rules are in PRIORITY order, not chronological order: Grab (3) comes
+     after the carrying-gold rules (1/2) even though it happens first in a
+     game, because once the gold is in hand, getting it home outranks
+     everything else. (Rules 1–3 can never compete — gold here and gold
+     carried are mutually exclusive — so this ordering changes no behaviour.)
+     Within each pair (1/2, 4/5, 8/9) the two rules can't both apply; each
+     pair lists "act if in position" before "navigate toward the position".
+     Rule 6 is a special case of rule 7 (BFS reaches an adjacent goal first,
+     in the same N,E,S,W order); it is kept separate so the Decision Rules
+     panel shows "step next door" as its own case.
 
      Rules 4/5 are a two-phase "act if in position, else navigate toward it"
      pair: rule 4/5 fires every turn the Wumpus is proven and the arrow is in
@@ -1800,25 +1821,25 @@ class Agent {
     };
     const [cx, cy] = this.locVal;
 
-    // 1. Grab gold in the current room.
-    if (record(1, 'Grab gold in the current room', this.goldHereVal, 'Grab')) {
-      return { action: 'Grab', trace };
-    }
-
-    // 2. Climb out from the entrance once carrying gold.
+    // 1. Climb out from the entrance once carrying gold.
     const climbHome = cx === 1 && cy === 1 && this.haveGoldVal;
-    if (record(2, 'At (1,1) carrying gold: climb out', climbHome, 'Climb')) {
+    if (record(1, 'At (1,1) carrying gold: climb out', climbHome, 'Climb')) {
       return { action: 'Climb', trace };
     }
 
-    // 3. Carrying the gold but not home yet -> head for (1,1) first.
+    // 2. Carrying the gold but not home yet -> head for (1,1) first.
     if (this.haveGoldVal) {
       const home = this._safeStep((x, y) => x === 1 && y === 1);
-      if (record(3, 'Carrying gold, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
+      if (record(2, 'Carrying gold, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
         return { action: 'Move' + home, trace };
       }
     } else {
-      record(3, 'Carrying gold, not home: step toward (1,1)', false);
+      record(2, 'Carrying gold, not home: step toward (1,1)', false);
+    }
+
+    // 3. Grab gold in the current room.
+    if (record(3, 'Grab gold in the current room', this.goldHereVal, 'Grab')) {
+      return { action: 'Grab', trace };
     }
 
     // 4 & 5. Deliberate shot at a PROVEN Wumpus (needs the arrow).
@@ -1868,19 +1889,20 @@ class Agent {
       return { action: 'Move' + towardFrontier, trace };
     }
 
-    // 8. Nothing left to explore and not home -> head back to (1,1).
-    const notHome = !(cx === 1 && cy === 1);
-    if (notHome) {
-      const home = this._safeStep((x, y) => x === 1 && y === 1);
-      if (record(8, 'Nothing left to explore, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
-        return { action: 'Move' + home, trace };
-      }
-    } else {
-      record(8, 'Nothing left to explore, not home: step toward (1,1)', false);
+    // 8. Home, out of options -> climb out empty-handed.
+    const atHome = cx === 1 && cy === 1;
+    if (record(8, 'Nothing left to explore, at (1,1): climb out', atHome, 'Climb')) {
+      return { action: 'Climb', trace };
     }
 
-    // 9. Home, out of options -> climb out empty-handed (or with gold if held).
-    record(9, 'Nothing left to do: climb out', true, 'Climb');
+    // 9. Nothing left to explore and not home -> head back to (1,1). A path
+    //    always exists (the visited cells the agent arrived through are safe),
+    //    so `home` is never null in practice; the Climb below is only a
+    //    defensive fallback so a run can never stall on a null action.
+    const home = this._safeStep((x, y) => x === 1 && y === 1);
+    if (record(9, 'Nothing left to explore, not home: step toward (1,1)', !!home, home && 'Move' + home)) {
+      return { action: 'Move' + home, trace };
+    }
     return { action: 'Climb', trace };
   }
 }
